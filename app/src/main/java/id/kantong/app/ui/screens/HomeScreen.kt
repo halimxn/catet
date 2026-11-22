@@ -1,5 +1,17 @@
 package id.kantong.app.ui.screens
 
+import id.kantong.app.data.short
+
+import id.kantong.app.data.startOfDay
+
+import id.kantong.app.data.startOfWeek
+
+import androidx.compose.foundation.layout.fillMaxHeight
+
+import androidx.compose.ui.draw.drawBehind
+
+import androidx.compose.foundation.border
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -100,30 +112,43 @@ fun HomeScreen(d: AppData, vm: AppViewModel, nav: Nav) {
     val endOfMonth = to - 1
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).statusBarsPadding().padding(horizontal = 20.dp)) {
-        // header: logo left; search + ledger pill right (one line each, nothing stacked)
+        // header (R89): logo left, two-line ledger pill right
         Row(Modifier.fillMaxWidth().padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-            CatetLogo(32.dp)
+            CatetLogo(30.dp)
             Spacer(Modifier.width(7.dp))
-            Text("catet", fontSize = 25.sp, fontWeight = FontWeight.ExtraBold, color = K.Ink, letterSpacing = (-0.2).sp)
+            Text("catet", fontSize = 23.sp, fontWeight = FontWeight.ExtraBold, color = K.Ink, letterSpacing = (-0.2).sp)
             Spacer(Modifier.weight(1f))
-            CRoundButton(Icons.Rounded.Search, "Cari transaksi", { nav.go(R.SEARCH) }, size = 42.dp, outlined = true)
-            Spacer(Modifier.width(8.dp))
             Row(
-                Modifier.anchor(ledgerAnchor).height(42.dp).clip(RoundedCornerShape(21.dp)).background(K.Card)
-                    .pressable { ledgerMenu = true }.padding(start = 4.dp, end = 10.dp),
+                Modifier.anchor(ledgerAnchor).height(46.dp).clip(RoundedCornerShape(23.dp)).background(K.Tile)
+                    .border(1.dp, K.Line, RoundedCornerShape(23.dp)).pressable { ledgerMenu = true }.padding(start = 5.dp, end = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Box(Modifier.size(34.dp).clip(CircleShape).background(K.Tile), contentAlignment = Alignment.Center) { CatIcon(ledger?.icon ?: "ledger", 23.dp) }
-                Spacer(Modifier.width(7.dp))
-                Text(ledger?.name ?: "Semua buku", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = K.Ink, maxLines = 1, modifier = Modifier.widthIn(max = 110.dp))
-                Icon(Icons.Rounded.KeyboardArrowDown, "Pilih buku kas", tint = K.Ink, modifier = Modifier.size(18.dp))
+                CatIcon(ledger?.icon ?: "ledger", 34.dp)
+                Spacer(Modifier.width(6.dp))
+                Column {
+                    Text(ledger?.name ?: "Semua buku", fontSize = 13.5.sp, fontWeight = FontWeight.ExtraBold, color = K.Ink, maxLines = 1, lineHeight = 15.sp, modifier = Modifier.widthIn(max = 110.dp))
+                    Text("Buku kas", fontSize = 10.5.sp, fontWeight = FontWeight.SemiBold, color = K.Muted, lineHeight = 12.sp)
+                }
+                Icon(Icons.Rounded.KeyboardArrowDown, "Pilih buku kas", tint = K.Ink, modifier = Modifier.padding(start = 2.dp).size(17.dp))
             }
         }
 
-        // title: the viewed month only (tap to change)
-        Row(Modifier.padding(top = 22.dp).pressable { period = true }, verticalAlignment = Alignment.CenterVertically) {
-            Text(fmt(from, "MMMM yyyy"), fontSize = 30.sp, fontWeight = FontWeight.ExtraBold, color = K.Ink, letterSpacing = (-0.3).sp, maxLines = 1)
-            Icon(Icons.Rounded.KeyboardArrowDown, "Pilih bulan", tint = K.Ink, modifier = Modifier.size(26.dp))
+        // title: viewed month (tap to change) with a date line; two-tone search on the right
+        Row(Modifier.fillMaxWidth().padding(top = 20.dp), verticalAlignment = Alignment.Bottom) {
+            Column(Modifier.weight(1f).pressable { period = true }) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(fmt(from, "MMMM yyyy"), fontSize = 27.sp, fontWeight = FontWeight.ExtraBold, color = K.Ink, letterSpacing = (-0.3).sp, maxLines = 1)
+                    Icon(Icons.Rounded.KeyboardArrowDown, "Pilih bulan", tint = K.Ink, modifier = Modifier.size(23.dp))
+                }
+                Text(
+                    if (current) fmt(System.currentTimeMillis(), "EEEE, d MMM") + " · sisa $daysLeft hari" else "${monthTx.size} catatan",
+                    fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = K.Muted,
+                )
+            }
+            Box(
+                Modifier.size(46.dp).clip(CircleShape).background(K.Tile).border(1.dp, K.Line, CircleShape).pressable { nav.go(R.SEARCH) },
+                contentAlignment = Alignment.Center,
+            ) { CatIcon("search", 28.dp) }
         }
 
         // yellow balance card
@@ -131,10 +156,10 @@ fun HomeScreen(d: AppData, vm: AppViewModel, nav: Nav) {
             Row(verticalAlignment = Alignment.Top) {
                 Column(Modifier.weight(1f)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(if (current) "Sisa uang bulan ini" else "Sisa uang", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = K.Ink2)
+                        Text(if (current) "Sisa uang bulan ini" else "Sisa uang", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = K.OnYellow)
                         Icon(
                             if (hidden) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility, if (hidden) "Tampilkan nominal" else "Sembunyikan nominal",
-                            tint = K.Muted, modifier = Modifier.padding(start = 6.dp).size(28.dp).clip(CircleShape).pressable { Prefs.hideAmounts = !hidden }.padding(4.dp),
+                            tint = K.OnYellow, modifier = Modifier.padding(start = 6.dp).size(28.dp).clip(CircleShape).pressable { Prefs.hideAmounts = !hidden }.padding(4.dp),
                         )
                     }
                     Money(income - spent, 46.sp, Modifier.padding(top = 4.dp), hidden = hidden)
@@ -144,18 +169,16 @@ fun HomeScreen(d: AppData, vm: AppViewModel, nav: Nav) {
                         BudgetRing(v.spentMonth.toFloat() / budgetTotal, 64.dp, 9.dp) {
                             Text("${(v.spentMonth * 100 / budgetTotal)}%", fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, color = K.Green)
                         }
-                        Text("anggaran", fontSize = 11.5.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF7A6F5C))
+                        Text("anggaran", fontSize = 11.5.sp, fontWeight = FontWeight.SemiBold, color = K.OnYellow)
                     }
                 }
             }
             Spacer(Modifier.height(14.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                InOut(Icons.Rounded.ArrowUpward, K.SageMid, "Masuk", income, K.Income, hidden)
-                Box(Modifier.width(1.5.dp).height(40.dp).background(K.YellowLine))
-                Spacer(Modifier.width(16.dp))
-                InOut(Icons.Rounded.ArrowDownward, Color(0xFFF2D9D5), "Keluar", spent, K.Expense, hidden)
+            Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                InOutBox("↙ Masuk", "+" + income.grouped(), K.Income, hidden, Modifier.weight(1f))
+                InOutBox("↗ Keluar", "−" + spent.grouped(), K.Expense, hidden, Modifier.weight(1f))
             }
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(10.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 QuickTile("coinbag", "Pemasukan") { vm.startAdd("in"); nav.go(R.add()) }
                 QuickTile("bill", "Pengeluaran") { vm.startAdd("out"); nav.go(R.add()) }
@@ -167,7 +190,7 @@ fun HomeScreen(d: AppData, vm: AppViewModel, nav: Nav) {
         if (current) {
             val due = d.bills.filter { it.paidMonthKey != monthKey() && it.dueDay <= dayOfMonth() + 3 }.sortedBy { it.dueDay }
             due.firstOrNull()?.let { b ->
-                val soft = Color(0xFF5B514D)
+                val soft = K.OnPink
                 CCard(K.Pink, Modifier.padding(top = 14.dp), radius = 30.dp) {
                     // label row: what this card is, and how many are waiting
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -215,35 +238,34 @@ fun HomeScreen(d: AppData, vm: AppViewModel, nav: Nav) {
             CCard(K.SageCard, Modifier.padding(top = 14.dp), radius = 30.dp) {
                 if (budgetTotal > 0) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Jatah harian", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF4E4A42), modifier = Modifier.weight(1f))
+                        Text("Jatah harian", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = K.OnSage, modifier = Modifier.weight(1f))
                         CChip("Sisa $daysLeft hari", bg = K.Tile, height = 28.dp)
                     }
                     Row(Modifier.padding(top = 6.dp), verticalAlignment = Alignment.Bottom) {
                         Money(v.safePerDay.coerceAtLeast(0), 38.sp, hidden = hidden)
-                        Text(" per hari", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF4F4A43), modifier = Modifier.padding(bottom = 6.dp))
-                    }
-                    Spacer(Modifier.height(12.dp))
-                    Row(
-                        Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(K.Tile).padding(horizontal = 14.dp, vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        CatIcon("history", 32.dp)
-                        Spacer(Modifier.width(12.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text("Anggaran bulan ini", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = K.Muted)
-                            Text(
-                                if (hidden) "•••••" else "Rp${v.spentMonth.grouped()} dari Rp${budgetTotal.grouped()}",
-                                fontSize = 15.5.sp, fontWeight = FontWeight.ExtraBold, color = K.Ink, maxLines = 1,
-                            )
-                        }
+                        Text(" per hari", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = K.OnSage, modifier = Modifier.padding(bottom = 6.dp))
                     }
                     Spacer(Modifier.height(10.dp))
-                    Box(
-                        Modifier.fillMaxWidth().height(46.dp).clip(RoundedCornerShape(17.dp)).background(K.Tile).pressable { budget = true },
-                        contentAlignment = Alignment.Center,
-                    ) { Text("Lihat anggaran  ›", fontSize = 16.sp, fontWeight = FontWeight.ExtraBold, color = K.Green) }
+                    WeekStrip(v, v.safePerDay)
+                    Spacer(Modifier.height(10.dp))
+                    Row(
+                        Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(K.Tile).pressable { budget = true }
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        CatIcon("budget", 32.dp)
+                        Spacer(Modifier.width(10.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text("Anggaran terpakai", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = K.Muted)
+                            Text(
+                                if (hidden) "•••••" else "Rp${v.spentMonth.short().replace(" ", "")} dari Rp${budgetTotal.short().replace(" ", "")}",
+                                fontSize = 15.sp, fontWeight = FontWeight.ExtraBold, color = K.Ink, maxLines = 1,
+                            )
+                        }
+                        Text("Lihat ›", fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, color = K.Green)
+                    }
                 } else {
-                    Text("Jatah harian", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF4E4A42))
+                    Text("Jatah harian", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = K.OnSage)
                     Text("Atur anggaran bulanan supaya tahu jatah belanja per hari sampai akhir bulan.", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = K.Muted, modifier = Modifier.padding(top = 4.dp))
                     Spacer(Modifier.height(12.dp))
                     RedButton("Atur anggaran", Modifier.fillMaxWidth()) { budget = true }
@@ -274,7 +296,7 @@ fun HomeScreen(d: AppData, vm: AppViewModel, nav: Nav) {
             PillOption("Kelola buku kas", Tone.PEACH, false, { ledgerMenu = false; nav.go(R.LEDGERS) }, glyph = Icons.Rounded.Settings)
         }
     }
-    if (period) PeriodSheet(onDismiss = { period = false })
+    if (period) PeriodSheet(onDismiss = { period = false }, d = d)
     if (budget) BudgetSheet(d, vm) { budget = false }
     open?.let { t ->
         val cur = d.allTxns.firstOrNull { it.id == t.id } ?: t
@@ -302,11 +324,71 @@ private fun RowScope.InOut(icon: androidx.compose.ui.graphics.vector.ImageVector
 @Composable
 private fun RowScope.QuickTile(icon: String, label: String, onClick: () -> Unit) {
     Column(
-        Modifier.weight(1f).height(92.dp).clip(RoundedCornerShape(22.dp)).background(K.Tile).pressable(onClick),
+        Modifier.weight(1f).height(96.dp).clip(RoundedCornerShape(22.dp)).background(K.Tile).pressable(onClick),
         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center,
     ) {
-        CatIcon(icon, 36.dp)
-        Spacer(Modifier.height(8.dp))
+        CatIcon(icon, 40.dp)
+        Spacer(Modifier.height(6.dp))
         Text(label, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = K.Ink, maxLines = 1)
     }
+}
+
+/** Masuk / Keluar box on the yellow card: soft label, bold amount. */
+@Composable
+private fun InOutBox(label: String, value: String, color: Color, hidden: Boolean, modifier: Modifier) {
+    Column(modifier.clip(RoundedCornerShape(16.dp)).background(Color(0x8CFFFFFF)).padding(horizontal = 12.dp, vertical = 8.dp)) {
+        Text(label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = K.OnYellow)
+        Text(if (hidden) "•••••" else value, fontSize = 15.5.sp, fontWeight = FontWeight.ExtraBold, color = color, maxLines = 1)
+    }
+}
+
+/**
+ * This week (Mon–Sun) against the daily allowance: bar height = spent ÷ allowance, orange when over,
+ * today outlined with a dashed border, later days empty.
+ */
+@Composable
+private fun WeekStrip(v: AppData, perDay: Long) {
+    val dayMs = 86_400_000L
+    val monday = startOfWeek()
+    val todayIdx = ((startOfDay() - monday) / dayMs).toInt()
+    val spent = (0..6).map { i ->
+        val s = monday + i * dayMs
+        v.txns.filter { it.kind == "out" && it.time in s until s + dayMs }.sumOf { it.amount }
+    }
+    val names = listOf("Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min")
+    val over = (0..todayIdx).count { perDay > 0 && spent[it] > perDay }
+    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        (0..6).forEach { i ->
+            val ratio = if (perDay > 0) spent[i].toFloat() / perDay else 0f
+            Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                Box(
+                    Modifier.fillMaxWidth().height(38.dp).clip(RoundedCornerShape(10.dp)).background(Color(0xA6FFFFFF)).let { m ->
+                        if (i == todayIdx) m.drawBehind {
+                            drawRoundRect(
+                                K.SageMid, cornerRadius = androidx.compose.ui.geometry.CornerRadius(10.dp.toPx()),
+                                style = androidx.compose.ui.graphics.drawscope.Stroke(
+                                    1.5.dp.toPx(),
+                                    pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 3.dp.toPx())),
+                                ),
+                            )
+                        } else m
+                    },
+                    contentAlignment = Alignment.BottomCenter,
+                ) {
+                    if (i <= todayIdx && spent[i] > 0) Box(
+                        Modifier.fillMaxWidth().fillMaxHeight((ratio / 1.4f).coerceIn(0.1f, 1f)).clip(RoundedCornerShape(10.dp))
+                            .background(if (ratio > 1f) K.ChartOut else K.Green.copy(alpha = 0.85f)),
+                    )
+                }
+                Text(
+                    names[i], fontSize = 11.sp, fontWeight = if (i == todayIdx) FontWeight.ExtraBold else FontWeight.SemiBold,
+                    color = if (i == todayIdx) K.Ink else K.OnSage, modifier = Modifier.padding(top = 4.dp),
+                )
+            }
+        }
+    }
+    Text(
+        if (over > 0) "Minggu ini · $over hari lewat jatah" else "Minggu ini · semua hari sesuai jatah",
+        fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = K.OnSage, modifier = Modifier.padding(top = 4.dp),
+    )
 }

@@ -249,7 +249,7 @@ fun SearchScreen(d: AppData, vm: AppViewModel, nav: Nav) {
     }
 
     if (monthEdit) {
-        PeriodSheet(onDismiss = { monthEdit = false }, initial = month ?: System.currentTimeMillis(), onApply = { month = it })
+        PeriodSheet(onDismiss = { monthEdit = false }, initial = month ?: System.currentTimeMillis(), d = d, onApply = { month = it })
     }
 
     dateEdit?.let { which ->

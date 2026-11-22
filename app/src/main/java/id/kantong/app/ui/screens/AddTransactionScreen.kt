@@ -397,7 +397,7 @@ fun AddTransactionScreen(d: AppData, vm: AppViewModel, nav: Nav, editId: Long) {
 
     // ---------------------------------------------------------------- overlays
     if (showCal) {
-        CalendarCard(time, onDismiss = { showCal = false }) { time = it; showCal = false }
+        CalendarCard(time, onDismiss = { showCal = false }, d = d) { time = it; showCal = false }
     }
     if (moreMenu) {
         PillMenu(moreAnchor.rect, onDismiss = { moreMenu = false }) {

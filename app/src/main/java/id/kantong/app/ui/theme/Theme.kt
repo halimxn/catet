@@ -18,9 +18,12 @@ import androidx.compose.ui.unit.sp
 /** Kantong palette: pastel families with a matching "ink" for text/strokes on that tint (see the design canvas). */
 object K {
     // catet palette (R89 reference): warm cream canvas, warm ink, deep green primary, pastel cards.
-    val Ink = Color(0xFF2B2B29)
+    val Ink = Color(0xFF24302A)   // R89: green-black titles
     val Ink2 = Color(0xFF4D453A)
-    val Muted = Color(0xFF6F6A60)
+    val Muted = Color(0xFF847C6E)
+    val OnYellow = Color(0xFF7A6B4E) // soft labels on the yellow card
+    val OnPink = Color(0xFF8C6A64)   // soft labels on the pink card
+    val OnSage = Color(0xFF5F6B58)   // soft labels on the sage card
     val Bg = Color(0xFFFDFCF5)      // canvas
     val Sheet = Color(0xFFFDFCF5)   // full screens and sheets
     val Card = Color(0xFFFBF4E4)    // cream cards that group rows

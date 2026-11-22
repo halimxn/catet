@@ -102,7 +102,9 @@ Baca file ini **sebelum mengubah apa pun**. Semua aturan di sini sudah disetujui
   - `RecordDetailCard` (lembar detail)
   - `StarMark`, `SmallChip`, `CatetSheet`, `SheetHeader`
 - **Lainnya:**
-  - `ui/components/PeriodSheet.kt`: pilih bulan
+  - `ui/components/PeriodSheet.kt`: pilih bulan berupa kartu bulan geser (HorizontalPager) + strip 2×6
+  - `CalendarCard` (Meow.kt): lembar "Pilih tanggal" bergaya kalender pengeluaran, hari bulan lain bergaris putus-putus
+  - `ui/components/TimeWheel.kt`: `TimePickerCard` roda jam/menit + chip menit cepat
   - `ui/components/ReportCharts.kt`: `GroupedBars`, `DailyLine`, `MonthHeatmap`
   - `ui/components/Charts.kt`: `Donut`
 - **`ui/components/Illus.kt`:** `CatIcon(key, size)`. Semua isian otomatis dipetakan ke palet dua warna lewat fungsi `tone()`. Ikon baru digambar di `drawIllus` pada grid 48 dengan garis luar memakai helper `fillStroke`, `rr`, dan `circ`.
@@ -145,18 +147,19 @@ Baca file ini **sebelum mengubah apa pun**. Semua aturan di sini sudah disetujui
 ## 5. Aturan penempatan per layar
 
 **Beranda** (`HomeScreen.kt`), urutan wajib:
-1. Logo + "catet" (kiri); di kanan tombol cari bulat (outlined, 42dp) lalu pil buku kas **satu baris** (ikon + nama + ▾).
-2. Judul bulan besar (30sp) dengan ▾ saja. Tanpa keterangan di bawahnya: info "Sisa N hari" sudah ada di kartu jatah harian. Jangan menumpuk teks kecil di header.
+1. Logo + "catet" (kiri); pil buku kas dua baris di kanan (ikon dua warna + nama + "Buku kas" + ▾).
+2. Judul bulan 27sp dengan ▾, di bawahnya satu baris "Minggu, 22 Nov · sisa N hari" (Muted). Tombol cari bulat 46dp dengan `CatIcon("search")` di kanan judul.
+   Warna teks mengikuti R89: `Ink` hijau-hitam, `Muted` abu-cokelat; label di kartu memakai `OnYellow` / `OnPink` / `OnSage`.
 3. Kartu **kuning**:
    - "Sisa uang bulan ini" + mata.
    - Nominal besar hijau, dengan cincin anggaran di kanan (persen di tengah, label "anggaran").
-   - Dua kolom Masuk | Keluar dipisah garis tipis.
+   - Dua kotak putih transparan Masuk | Keluar (`InOutBox`).
    - Tiga tombol cepat putih: Pemasukan, Pengeluaran, Transfer.
 4. Kartu **pink** "Menunggu dicatat · 1 dari N": tagihan jatuh tempo yang belum dibayar, dengan tombol Ubah (outline) dan Catat (hijau). Hanya muncul kalau ada tagihan.
 5. Kartu **sage** "Jatah harian":
    - Nominal per hari dan chip "Sisa N hari".
-   - Kotak putih berisi anggaran terpakai/total.
-   - Tombol putih "Lihat anggaran ›".
+   - Strip 7 hari (`WeekStrip`): batang = pengeluaran ÷ jatah, oranye kalau lewat, hari ini bergaris putus-putus.
+   - Baris putih "Anggaran terpakai" + "Lihat ›" (buka `BudgetSheet`).
    - Kalau belum ada anggaran: ajakan dengan tombol "Atur anggaran".
 6. "Riwayat" + "Lihat semua", lalu `RecordTimeline` bulan yang dilihat.
 

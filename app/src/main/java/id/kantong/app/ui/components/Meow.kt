@@ -1,5 +1,9 @@
 package id.kantong.app.ui.components
 
+import androidx.compose.material.icons.rounded.Schedule
+
+import androidx.compose.ui.draw.drawBehind
+
 import android.view.HapticFeedbackConstants
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -536,69 +540,133 @@ fun Modifier.anchor(a: Anchor): Modifier = onGloballyPositioned { a.rect = it.bo
 private val WEEKDAYS = listOf("Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min")
 private val MONTHS = listOf("Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des")
 
-/** Calendar card: year/month steppers, Monday-first day grid, time chip, Batal / Konfirmasi. */
+/**
+ * "Pilih tanggal" sheet, styled like the spending calendar: quick chips (Hari ini / Kemarin / 2 hari lalu),
+ * a cream month card where each day is tinted by that day's spending (when [d] is given), days of the
+ * previous/next month drawn with a dashed border (tap one to jump there), then the time chip, Batal and "Pilih d MMM".
+ */
 @Composable
-fun CalendarCard(initial: Long, onDismiss: () -> Unit, withTime: Boolean = true, onConfirm: (Long) -> Unit) {
+fun CalendarCard(initial: Long, onDismiss: () -> Unit, withTime: Boolean = true, d: id.kantong.app.data.AppData? = null, onConfirm: (Long) -> Unit) {
     var picked by remember { mutableLongStateOf(initial) }
     var shown by remember { mutableLongStateOf(initial) } // any time inside the month on screen
     var showTimePicker by remember { mutableStateOf(false) }
+    fun sameDay(a: Long, b: Long): Boolean {
+        val x = Calendar.getInstance().apply { timeInMillis = a }; val y = Calendar.getInstance().apply { timeInMillis = b }
+        return x.get(Calendar.YEAR) == y.get(Calendar.YEAR) && x.get(Calendar.DAY_OF_YEAR) == y.get(Calendar.DAY_OF_YEAR)
+    }
+    /** [picked]'s clock time moved onto the day of [day]. */
+    fun onDay(day: Long): Long {
+        val t = Calendar.getInstance().apply { timeInMillis = picked }
+        return Calendar.getInstance().apply {
+            timeInMillis = day
+            set(Calendar.HOUR_OF_DAY, t.get(Calendar.HOUR_OF_DAY)); set(Calendar.MINUTE, t.get(Calendar.MINUTE))
+            set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
+    }
+    val dayMs = 86_400_000L
+    val todayStart = id.kantong.app.data.startOfDay()
+    val dash = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(4f, 4f))
+
     Overlay(onDismiss) {
-        FloatingCard {
-            val cal = Calendar.getInstance().apply { timeInMillis = shown }
-            fun step(field: Int, by: Int) { shown = Calendar.getInstance().apply { timeInMillis = shown; set(Calendar.DAY_OF_MONTH, 1); add(field, by) }.timeInMillis }
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                SquareButton(Icons.Rounded.KeyboardDoubleArrowLeft, "Tahun sebelumnya", { step(Calendar.YEAR, -1) }, size = 40.dp)
-                SquareButton(Icons.Rounded.ChevronLeft, "Bulan sebelumnya", { step(Calendar.MONTH, -1) }, size = 40.dp)
-                Box(Modifier.weight(1f).height(40.dp).clip(RoundedCornerShape(13.dp)).background(K.Field).border(1.dp, K.Line, RoundedCornerShape(13.dp)), contentAlignment = Alignment.Center) {
-                    Text("${MONTHS[cal.get(Calendar.MONTH)]} ${cal.get(Calendar.YEAR)}", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = K.Ink)
-                }
-                SquareButton(Icons.Rounded.ChevronRight, "Bulan berikutnya", { step(Calendar.MONTH, 1) }, size = 40.dp)
-                SquareButton(Icons.Rounded.KeyboardDoubleArrowRight, "Tahun berikutnya", { step(Calendar.YEAR, 1) }, size = 40.dp)
-            }
-            Spacer(Modifier.height(12.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                WEEKDAYS.forEach { w ->
-                    Box(Modifier.weight(1f).height(30.dp).clip(RoundedCornerShape(10.dp)).background(K.Field), contentAlignment = Alignment.Center) {
-                        Text(w, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = K.Ink2)
-                    }
+        CatetSheet {
+            SheetHeader("Pilih tanggal", onDismiss, size = 21)
+            Text(if (d != null) "Warna = pengeluaran hari itu" else "Ketuk tanggal", fontSize = 13.sp, color = K.Muted)
+
+            Row(Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                listOf("Hari ini" to 0, "Kemarin" to 1, "2 hari lalu" to 2).forEach { (label, back) ->
+                    val day = todayStart - back * dayMs
+                    val on = sameDay(picked, day)
+                    Box(
+                        Modifier.height(34.dp).clip(RoundedCornerShape(17.dp)).background(if (on) K.Green else K.Field)
+                            .pressable { picked = onDay(day); shown = day }.padding(horizontal = 14.dp),
+                        contentAlignment = Alignment.Center,
+                    ) { Text(label, fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, color = if (on) Color.White else K.Ink2) }
                 }
             }
-            Spacer(Modifier.height(8.dp))
-            val first = Calendar.getInstance().apply { timeInMillis = shown; set(Calendar.DAY_OF_MONTH, 1) }
+
+            val first = Calendar.getInstance().apply { timeInMillis = shown; set(Calendar.DAY_OF_MONTH, 1); set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0) }
+            val firstMs = first.timeInMillis
             val lead = (first.get(Calendar.DAY_OF_WEEK) - Calendar.MONDAY + 7) % 7
             val days = first.getActualMaximum(Calendar.DAY_OF_MONTH)
-            val pc = Calendar.getInstance().apply { timeInMillis = picked }
-            val sameMonth = pc.get(Calendar.YEAR) == first.get(Calendar.YEAR) && pc.get(Calendar.MONTH) == first.get(Calendar.MONTH)
             val cells = ((lead + days + 6) / 7) * 7
-            (0 until cells).chunked(7).forEach { week ->
-                Row(Modifier.padding(bottom = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    week.forEach { cell ->
-                        val day = cell - lead + 1
-                        val valid = day in 1..days
-                        val on = valid && sameMonth && pc.get(Calendar.DAY_OF_MONTH) == day
-                        Box(
-                            Modifier.weight(1f).height(38.dp).clip(RoundedCornerShape(12.dp))
-                                .background(if (on) K.Red else K.Field)
-                                .border(if (on) 1.5.dp else 1.dp, if (on) K.Green else if (valid) K.Line else Color.Transparent, RoundedCornerShape(12.dp))
-                                .let { m -> if (valid) m.pressable { picked = Calendar.getInstance().apply { timeInMillis = picked; set(Calendar.YEAR, first.get(Calendar.YEAR)); set(Calendar.MONTH, first.get(Calendar.MONTH)); set(Calendar.DAY_OF_MONTH, day) }.timeInMillis } else m },
-                            contentAlignment = Alignment.Center,
-                        ) { if (valid) Text("$day", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = if (on) Color.White else K.Ink) }
+            val spent = remember(firstMs, d) {
+                LongArray(days).also { arr ->
+                    d?.txns?.forEach { t ->
+                        if (t.kind == "out" && t.time >= firstMs) {
+                            val c = Calendar.getInstance().apply { timeInMillis = t.time }
+                            if (c.get(Calendar.YEAR) == first.get(Calendar.YEAR) && c.get(Calendar.MONTH) == first.get(Calendar.MONTH)) arr[c.get(Calendar.DAY_OF_MONTH) - 1] += t.amount
+                        }
                     }
                 }
             }
-            Spacer(Modifier.height(8.dp))
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            val peak = spent.maxOrNull() ?: 0L
+            fun step(by: Int) { shown = Calendar.getInstance().apply { timeInMillis = firstMs; add(Calendar.MONTH, by) }.timeInMillis }
+
+            Column(Modifier.fillMaxWidth().padding(top = 12.dp).clip(RoundedCornerShape(26.dp)).background(K.Card).padding(14.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    CRoundButton(Icons.Rounded.ChevronLeft, "Bulan sebelumnya", { step(-1) }, size = 34.dp, outlined = true)
+                    Text(fmt(firstMs, "MMMM yyyy"), fontSize = 16.sp, fontWeight = FontWeight.ExtraBold, color = K.Ink, textAlign = androidx.compose.ui.text.style.TextAlign.Center, modifier = Modifier.weight(1f))
+                    CRoundButton(Icons.Rounded.ChevronRight, "Bulan berikutnya", { step(1) }, size = 34.dp, outlined = true)
+                }
+                Row(Modifier.padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                    WEEKDAYS.forEach { w -> Text(w, fontSize = 11.5.sp, fontWeight = FontWeight.Bold, color = K.Muted, textAlign = androidx.compose.ui.text.style.TextAlign.Center, modifier = Modifier.weight(1f)) }
+                }
+                Spacer(Modifier.height(6.dp))
+                (0 until cells).chunked(7).forEach { week ->
+                    Row(Modifier.padding(bottom = 5.dp), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                        week.forEach { cell ->
+                            val dayMsOf = Calendar.getInstance().apply { timeInMillis = firstMs; add(Calendar.DAY_OF_MONTH, cell - lead) }.timeInMillis
+                            val dayNum = Calendar.getInstance().apply { timeInMillis = dayMsOf }.get(Calendar.DAY_OF_MONTH)
+                            val inMonth = cell - lead in 0 until days
+                            val future = dayMsOf > todayStart
+                            val on = sameDay(picked, dayMsOf)
+                            val level = if (!inMonth || peak <= 0L) 0 else spent[cell - lead].let { v -> if (v <= 0L) 0 else ((v * 4 + peak - 1) / peak).toInt().coerceIn(1, 4) }
+                            val shape = RoundedCornerShape(11.dp)
+                            Box(
+                                Modifier.weight(1f).height(38.dp).let { m ->
+                                    when {
+                                        !inMonth -> m.drawBehind {
+                                            drawRoundRect(K.YellowLine, cornerRadius = androidx.compose.ui.geometry.CornerRadius(11.dp.toPx()), style = androidx.compose.ui.graphics.drawscope.Stroke(1.4.dp.toPx(), pathEffect = dash))
+                                        }
+                                        future -> m.clip(shape).background(K.Tile)
+                                        else -> m.clip(shape).background(K.Heat[level])
+                                    }
+                                }.let { m -> if (on) m.border(2.5.dp, K.Ink, shape) else m }
+                                    .clip(shape).pressable { picked = onDay(dayMsOf); if (!inMonth) shown = dayMsOf },
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(
+                                    "$dayNum", fontSize = 13.5.sp, fontWeight = if (inMonth) FontWeight.ExtraBold else FontWeight.Bold,
+                                    color = when { !inMonth || future -> K.Muted.copy(alpha = 0.6f); level >= 3 -> Color.White; else -> K.Ink },
+                                )
+                            }
+                        }
+                    }
+                }
+                if (d != null) Row(Modifier.padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text("Sedikit", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = K.Muted)
+                    K.Heat.forEach { Box(Modifier.padding(start = 4.dp).size(16.dp, 9.dp).clip(RoundedCornerShape(3.dp)).background(it)) }
+                    Text("Banyak", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = K.Muted, modifier = Modifier.padding(start = 4.dp).weight(1f))
+                    Box(Modifier.size(16.dp, 11.dp).drawBehind {
+                        drawRoundRect(K.YellowLine, cornerRadius = androidx.compose.ui.geometry.CornerRadius(3.dp.toPx()), style = androidx.compose.ui.graphics.drawscope.Stroke(1.4.dp.toPx(), pathEffect = dash))
+                    })
+                    Text(" bulan lain", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = K.Muted)
+                }
+            }
+
+            Row(Modifier.fillMaxWidth().padding(top = 14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (withTime) {
-                    Box(
-                        Modifier.width(76.dp).height(48.dp).clip(RoundedCornerShape(16.dp))
-                            .background(K.Field)
-                            .border(1.dp, K.Line, RoundedCornerShape(16.dp))
-                            .pressable { showTimePicker = true },
-                        contentAlignment = Alignment.Center,
-                    ) { Text(fmt(picked, "HH.mm"), fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = K.Ink) }
+                    Row(
+                        Modifier.height(50.dp).clip(RoundedCornerShape(16.dp)).background(K.SageCard).pressable { showTimePicker = true }.padding(horizontal = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(Icons.Rounded.Schedule, "Ubah jam", tint = K.Green, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(5.dp))
+                        Text(fmt(picked, "HH.mm"), fontSize = 15.sp, fontWeight = FontWeight.ExtraBold, color = K.Green)
+                    }
                 }
                 CreamButton("Batal", Modifier.weight(1f), onClick = onDismiss)
-                RedButton("Pilih", Modifier.weight(1f)) { onConfirm(picked) }
+                RedButton("Pilih " + fmt(picked, "d MMM"), Modifier.weight(1.2f)) { onConfirm(picked) }
             }
         }
     }
@@ -615,93 +683,6 @@ fun CalendarCard(initial: Long, onDismiss: () -> Unit, withTime: Boolean = true,
                 set(Calendar.MINUTE, m)
             }.timeInMillis
             showTimePicker = false
-        }
-    }
-}
-
-/** Time picker card: hour and minute steppers with quick minute chips, Batal / Pilih. */
-@Composable
-fun TimePickerCard(
-    initialHour: Int,
-    initialMinute: Int,
-    onDismiss: () -> Unit,
-    onConfirm: (Int, Int) -> Unit,
-) {
-    var hour by remember { mutableIntStateOf(initialHour.coerceIn(0, 23)) }
-    var minute by remember { mutableIntStateOf(initialMinute.coerceIn(0, 59)) }
-    Overlay(onDismiss) {
-        FloatingCard {
-            RedFirst("Pilih Jam", 19.sp)
-            Spacer(Modifier.height(14.dp))
-            Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Jam", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = K.Muted)
-                    Spacer(Modifier.height(4.dp))
-                    SquareButton(Icons.Rounded.KeyboardArrowUp, "+1 jam", { hour = (hour + 1) % 24 }, size = 38.dp)
-                    Spacer(Modifier.height(6.dp))
-                    Box(
-                        Modifier.width(78.dp).height(52.dp).clip(RoundedCornerShape(14.dp))
-                            .background(K.Field)
-                            .border(1.dp, K.Line, RoundedCornerShape(14.dp)),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text("%02d".format(hour), fontSize = 30.sp, fontWeight = FontWeight.ExtraBold, color = K.Ink)
-                    }
-                    Spacer(Modifier.height(6.dp))
-                    SquareButton(Icons.Rounded.KeyboardArrowDown, "-1 jam", { hour = (hour + 23) % 24 }, size = 38.dp)
-                }
-                Spacer(Modifier.width(14.dp))
-                Text(":", fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, color = K.Ink2, modifier = Modifier.padding(top = 16.dp))
-                Spacer(Modifier.width(14.dp))
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Menit", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = K.Muted)
-                    Spacer(Modifier.height(4.dp))
-                    SquareButton(Icons.Rounded.KeyboardArrowUp, "+1 menit", { minute = (minute + 1) % 60 }, size = 38.dp)
-                    Spacer(Modifier.height(6.dp))
-                    Box(
-                        Modifier.width(78.dp).height(52.dp).clip(RoundedCornerShape(14.dp))
-                            .background(K.Field)
-                            .border(1.dp, K.Line, RoundedCornerShape(14.dp)),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text("%02d".format(minute), fontSize = 30.sp, fontWeight = FontWeight.ExtraBold, color = K.Ink)
-                    }
-                    Spacer(Modifier.height(6.dp))
-                    SquareButton(Icons.Rounded.KeyboardArrowDown, "-1 menit", { minute = (minute + 59) % 60 }, size = 38.dp)
-                }
-            }
-            Spacer(Modifier.height(14.dp))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf(0, 15, 30, 45).forEach { m ->
-                    val on = minute == m
-                    Box(
-                        Modifier.weight(1f).height(34.dp).clip(RoundedCornerShape(10.dp))
-                            .background(if (on) K.Green else K.Field)
-                            .border(if (on) 1.5.dp else 1.dp, if (on) K.Green else K.Line, RoundedCornerShape(10.dp))
-                            .pressable { minute = m },
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(
-                            ":%02d".format(m),
-                            fontSize = 13.5.sp,
-                            fontWeight = if (on) FontWeight.Bold else FontWeight.Medium,
-                            color = if (on) Color.White else K.Ink,
-                        )
-                    }
-                }
-            }
-            Spacer(Modifier.height(16.dp))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                CreamButton("Batal", Modifier.weight(1f), onClick = onDismiss)
-                RedButton("Pilih", Modifier.weight(1f)) {
-                    onConfirm(hour, minute)
-                    onDismiss()
-                }
-            }
         }
     }
 }
