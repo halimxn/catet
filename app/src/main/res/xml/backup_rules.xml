@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android Auto Backup (Android 11 and lower): include the Room database. -->
+<full-backup-content>
+    <include domain="database" path="kantong.db" />
+    <include domain="sharedpref" path="." />
+</full-backup-content>
