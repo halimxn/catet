@@ -1,7 +1,6 @@
 package id.kantong.app.ui.screens
 
 import android.Manifest
-import android.app.TimePickerDialog
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -101,6 +100,7 @@ import id.kantong.app.ui.components.RecordTile
 import id.kantong.app.ui.components.RedButton
 import id.kantong.app.ui.components.RedFirst
 import id.kantong.app.ui.components.SheetCard
+import id.kantong.app.ui.components.TimePickerCard
 import id.kantong.app.ui.components.pressable
 import id.kantong.app.ui.theme.K
 import kotlinx.coroutines.Dispatchers
@@ -127,6 +127,7 @@ fun SettingsScreen(d: AppData, vm: AppViewModel, nav: Nav) {
     var notifDenied by remember { mutableStateOf(false) }
     var confirmWipe by remember { mutableStateOf(false) }
     var syncing by remember { mutableStateOf(false) }
+    var showTimePicker by remember { mutableStateOf(false) }
 
     fun syncNow(showResult: Boolean) {
         if (syncing) return
@@ -206,9 +207,7 @@ fun SettingsScreen(d: AppData, vm: AppViewModel, nav: Nav) {
         }
     }
     fun pickTime() {
-        TimePickerDialog(ctx, { _, h, m ->
-            if (Prefs.reminder) Reminder.schedule(ctx, h, m) else { Prefs.reminderHour = h; Prefs.reminderMinute = m }
-        }, Prefs.reminderHour, Prefs.reminderMinute, true).show()
+        showTimePicker = true
     }
 
     val time = "%02d.%02d".format(Prefs.reminderHour, Prefs.reminderMinute)
@@ -525,6 +524,17 @@ fun SettingsScreen(d: AppData, vm: AppViewModel, nav: Nav) {
                     }
                 }
             }
+        }
+    }
+
+    if (showTimePicker) {
+        TimePickerCard(
+            initialHour = Prefs.reminderHour,
+            initialMinute = Prefs.reminderMinute,
+            onDismiss = { showTimePicker = false },
+        ) { h, m ->
+            if (Prefs.reminder) Reminder.schedule(ctx, h, m) else { Prefs.reminderHour = h; Prefs.reminderMinute = m }
+            showTimePicker = false
         }
     }
 

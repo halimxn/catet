@@ -1,6 +1,5 @@
 package id.kantong.app.ui.components
 
-import android.app.TimePickerDialog
 import android.view.HapticFeedbackConstants
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -37,6 +36,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.ChevronLeft
 import androidx.compose.material.icons.rounded.ChevronRight
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material.icons.rounded.KeyboardDoubleArrowLeft
 import androidx.compose.material.icons.rounded.KeyboardDoubleArrowRight
 import androidx.compose.material3.Icon
@@ -538,9 +539,9 @@ private val MONTHS = listOf("Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Ag
 /** Calendar card: year/month steppers, Monday-first day grid, time chip, Batal / Konfirmasi. */
 @Composable
 fun CalendarCard(initial: Long, onDismiss: () -> Unit, withTime: Boolean = true, onConfirm: (Long) -> Unit) {
-    val context = LocalContext.current
     var picked by remember { mutableLongStateOf(initial) }
     var shown by remember { mutableLongStateOf(initial) } // any time inside the month on screen
+    var showTimePicker by remember { mutableStateOf(false) }
     Overlay(onDismiss) {
         FloatingCard {
             val cal = Calendar.getInstance().apply { timeInMillis = shown }
@@ -548,7 +549,7 @@ fun CalendarCard(initial: Long, onDismiss: () -> Unit, withTime: Boolean = true,
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 SquareButton(Icons.Rounded.KeyboardDoubleArrowLeft, "Tahun sebelumnya", { step(Calendar.YEAR, -1) }, size = 40.dp)
                 SquareButton(Icons.Rounded.ChevronLeft, "Bulan sebelumnya", { step(Calendar.MONTH, -1) }, size = 40.dp)
-                Box(Modifier.weight(1f).height(40.dp).clip(RoundedCornerShape(13.dp)).background(K.Field), contentAlignment = Alignment.Center) {
+                Box(Modifier.weight(1f).height(40.dp).clip(RoundedCornerShape(13.dp)).background(K.Field).border(1.dp, K.Line, RoundedCornerShape(13.dp)), contentAlignment = Alignment.Center) {
                     Text("${MONTHS[cal.get(Calendar.MONTH)]} ${cal.get(Calendar.YEAR)}", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = K.Ink)
                 }
                 SquareButton(Icons.Rounded.ChevronRight, "Bulan berikutnya", { step(Calendar.MONTH, 1) }, size = 40.dp)
@@ -576,28 +577,130 @@ fun CalendarCard(initial: Long, onDismiss: () -> Unit, withTime: Boolean = true,
                         val valid = day in 1..days
                         val on = valid && sameMonth && pc.get(Calendar.DAY_OF_MONTH) == day
                         Box(
-                            Modifier.weight(1f).height(38.dp).clip(RoundedCornerShape(12.dp)).background(if (on) K.Red else K.Field)
+                            Modifier.weight(1f).height(38.dp).clip(RoundedCornerShape(12.dp))
+                                .background(if (on) K.Red else K.Field)
+                                .border(if (on) 1.5.dp else 1.dp, if (on) K.Green else if (valid) K.Line else Color.Transparent, RoundedCornerShape(12.dp))
                                 .let { m -> if (valid) m.pressable { picked = Calendar.getInstance().apply { timeInMillis = picked; set(Calendar.YEAR, first.get(Calendar.YEAR)); set(Calendar.MONTH, first.get(Calendar.MONTH)); set(Calendar.DAY_OF_MONTH, day) }.timeInMillis } else m },
                             contentAlignment = Alignment.Center,
                         ) { if (valid) Text("$day", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = if (on) Color.White else K.Ink) }
                     }
                 }
             }
-            Spacer(Modifier.height(6.dp))
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Spacer(Modifier.height(8.dp))
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (withTime) {
                     Box(
-                        Modifier.width(84.dp).height(48.dp).clip(RoundedCornerShape(16.dp)).background(K.Field).pressable {
-                            TimePickerDialog(context, { _, h, m ->
-                                picked = Calendar.getInstance().apply { timeInMillis = picked; set(Calendar.HOUR_OF_DAY, h); set(Calendar.MINUTE, m) }.timeInMillis
-                            }, pc.get(Calendar.HOUR_OF_DAY), pc.get(Calendar.MINUTE), true).show()
-                        },
+                        Modifier.width(76.dp).height(48.dp).clip(RoundedCornerShape(16.dp))
+                            .background(K.Field)
+                            .border(1.dp, K.Line, RoundedCornerShape(16.dp))
+                            .pressable { showTimePicker = true },
                         contentAlignment = Alignment.Center,
                     ) { Text(fmt(picked, "HH.mm"), fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = K.Ink) }
                 }
-                Spacer(Modifier.weight(1f))
-                CreamButton("Batal", Modifier.width(96.dp), onClick = onDismiss)
-                RedButton("Pilih", Modifier.width(110.dp)) { onConfirm(picked) }
+                CreamButton("Batal", Modifier.weight(1f), onClick = onDismiss)
+                RedButton("Pilih", Modifier.weight(1f)) { onConfirm(picked) }
+            }
+        }
+    }
+    if (showTimePicker) {
+        val pc = Calendar.getInstance().apply { timeInMillis = picked }
+        TimePickerCard(
+            initialHour = pc.get(Calendar.HOUR_OF_DAY),
+            initialMinute = pc.get(Calendar.MINUTE),
+            onDismiss = { showTimePicker = false },
+        ) { h, m ->
+            picked = Calendar.getInstance().apply {
+                timeInMillis = picked
+                set(Calendar.HOUR_OF_DAY, h)
+                set(Calendar.MINUTE, m)
+            }.timeInMillis
+            showTimePicker = false
+        }
+    }
+}
+
+/** Time picker card: hour and minute steppers with quick minute chips, Batal / Pilih. */
+@Composable
+fun TimePickerCard(
+    initialHour: Int,
+    initialMinute: Int,
+    onDismiss: () -> Unit,
+    onConfirm: (Int, Int) -> Unit,
+) {
+    var hour by remember { mutableIntStateOf(initialHour.coerceIn(0, 23)) }
+    var minute by remember { mutableIntStateOf(initialMinute.coerceIn(0, 59)) }
+    Overlay(onDismiss) {
+        FloatingCard {
+            RedFirst("Pilih Jam", 19.sp)
+            Spacer(Modifier.height(14.dp))
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("Jam", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = K.Muted)
+                    Spacer(Modifier.height(4.dp))
+                    SquareButton(Icons.Rounded.KeyboardArrowUp, "+1 jam", { hour = (hour + 1) % 24 }, size = 38.dp)
+                    Spacer(Modifier.height(6.dp))
+                    Box(
+                        Modifier.width(78.dp).height(52.dp).clip(RoundedCornerShape(14.dp))
+                            .background(K.Field)
+                            .border(1.dp, K.Line, RoundedCornerShape(14.dp)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text("%02d".format(hour), fontSize = 30.sp, fontWeight = FontWeight.ExtraBold, color = K.Ink)
+                    }
+                    Spacer(Modifier.height(6.dp))
+                    SquareButton(Icons.Rounded.KeyboardArrowDown, "-1 jam", { hour = (hour + 23) % 24 }, size = 38.dp)
+                }
+                Spacer(Modifier.width(14.dp))
+                Text(":", fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, color = K.Ink2, modifier = Modifier.padding(top = 16.dp))
+                Spacer(Modifier.width(14.dp))
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("Menit", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = K.Muted)
+                    Spacer(Modifier.height(4.dp))
+                    SquareButton(Icons.Rounded.KeyboardArrowUp, "+1 menit", { minute = (minute + 1) % 60 }, size = 38.dp)
+                    Spacer(Modifier.height(6.dp))
+                    Box(
+                        Modifier.width(78.dp).height(52.dp).clip(RoundedCornerShape(14.dp))
+                            .background(K.Field)
+                            .border(1.dp, K.Line, RoundedCornerShape(14.dp)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text("%02d".format(minute), fontSize = 30.sp, fontWeight = FontWeight.ExtraBold, color = K.Ink)
+                    }
+                    Spacer(Modifier.height(6.dp))
+                    SquareButton(Icons.Rounded.KeyboardArrowDown, "-1 menit", { minute = (minute + 59) % 60 }, size = 38.dp)
+                }
+            }
+            Spacer(Modifier.height(14.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf(0, 15, 30, 45).forEach { m ->
+                    val on = minute == m
+                    Box(
+                        Modifier.weight(1f).height(34.dp).clip(RoundedCornerShape(10.dp))
+                            .background(if (on) K.Green else K.Field)
+                            .border(if (on) 1.5.dp else 1.dp, if (on) K.Green else K.Line, RoundedCornerShape(10.dp))
+                            .pressable { minute = m },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            ":%02d".format(m),
+                            fontSize = 13.5.sp,
+                            fontWeight = if (on) FontWeight.Bold else FontWeight.Medium,
+                            color = if (on) Color.White else K.Ink,
+                        )
+                    }
+                }
+            }
+            Spacer(Modifier.height(16.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                CreamButton("Batal", Modifier.weight(1f), onClick = onDismiss)
+                RedButton("Pilih", Modifier.weight(1f)) {
+                    onConfirm(hour, minute)
+                    onDismiss()
+                }
             }
         }
     }
@@ -616,16 +719,38 @@ fun PeriodCard(mode: String, anchor: Long, onDismiss: () -> Unit, onConfirm: (St
     var week by remember { mutableIntStateOf((start.get(Calendar.DAY_OF_MONTH) - 1) / 7) }
     Overlay(onDismiss) {
         FloatingCard {
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf("week" to "Mingguan", "month" to "Bulanan", "year" to "Tahunan").forEach { (k, label) ->
                     val on = m == k
                     Box(
-                        Modifier.weight(1f).height(46.dp).clip(RoundedCornerShape(16.dp)).background(if (on) K.Red else K.Field).pressable { m = k },
+                        Modifier.weight(1f).height(42.dp).clip(RoundedCornerShape(14.dp))
+                            .background(if (on) K.Green else K.Field)
+                            .border(if (on) 1.5.dp else 1.dp, if (on) K.Green else K.Line, RoundedCornerShape(14.dp))
+                            .pressable { m = k },
                         contentAlignment = Alignment.Center,
-                    ) { Text(label, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = if (on) Color.White else K.Ink) }
+                    ) {
+                        Text(
+                            label,
+                            fontSize = 14.5.sp,
+                            fontWeight = if (on) FontWeight.Bold else FontWeight.SemiBold,
+                            color = if (on) Color.White else K.Ink,
+                        )
+                    }
                 }
             }
             Spacer(Modifier.height(12.dp))
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                SquareButton(Icons.Rounded.ChevronLeft, "Tahun sebelumnya", { year-- }, size = 36.dp)
+                Spacer(Modifier.width(20.dp))
+                Text("$year", fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, color = K.Ink)
+                Spacer(Modifier.width(20.dp))
+                SquareButton(Icons.Rounded.ChevronRight, "Tahun berikutnya", { year++ }, size = 36.dp)
+            }
+            Spacer(Modifier.height(10.dp))
             if (m != "year") {
                 MONTHS.chunked(4).forEachIndexed { r, row ->
                     Row(Modifier.padding(bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -633,9 +758,19 @@ fun PeriodCard(mode: String, anchor: Long, onDismiss: () -> Unit, onConfirm: (St
                             val idx = r * 4 + c
                             val on = idx == month
                             Box(
-                                Modifier.weight(1f).height(40.dp).clip(RoundedCornerShape(13.dp)).background(if (on) K.Red else K.Field).pressable { month = idx },
+                                Modifier.weight(1f).height(38.dp).clip(RoundedCornerShape(12.dp))
+                                    .background(if (on) K.Green else K.Field)
+                                    .border(if (on) 1.5.dp else 1.dp, if (on) K.Green else K.Line, RoundedCornerShape(12.dp))
+                                    .pressable { month = idx },
                                 contentAlignment = Alignment.Center,
-                            ) { Text(name, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = if (on) Color.White else K.Ink) }
+                            ) {
+                                Text(
+                                    name,
+                                    fontSize = 14.5.sp,
+                                    fontWeight = if (on) FontWeight.ExtraBold else FontWeight.SemiBold,
+                                    color = if (on) Color.White else K.Ink,
+                                )
+                            }
                         }
                     }
                 }
@@ -647,24 +782,32 @@ fun PeriodCard(mode: String, anchor: Long, onDismiss: () -> Unit, onConfirm: (St
                     (0 until weeks).forEach { i ->
                         val on = i == week.coerceAtMost(weeks - 1)
                         Box(
-                            Modifier.weight(1f).height(40.dp).clip(RoundedCornerShape(13.dp)).background(if (on) K.Red else K.Field).pressable { week = i },
+                            Modifier.weight(1f).height(36.dp).clip(RoundedCornerShape(11.dp))
+                                .background(if (on) K.Green else K.Field)
+                                .border(if (on) 1.5.dp else 1.dp, if (on) K.Green else K.Line, RoundedCornerShape(11.dp))
+                                .pressable { week = i },
                             contentAlignment = Alignment.Center,
-                        ) { Text("${i * 7 + 1}–${minOf(days, i * 7 + 7)}", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = if (on) Color.White else K.Ink) }
+                        ) {
+                            Text(
+                                "${i * 7 + 1}–${minOf(days, i * 7 + 7)}",
+                                fontSize = 13.sp,
+                                fontWeight = if (on) FontWeight.Bold else FontWeight.Medium,
+                                color = if (on) Color.White else K.Ink,
+                            )
+                        }
                     }
                 }
             }
-            Spacer(Modifier.height(4.dp))
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                SquareButton(Icons.Rounded.ChevronLeft, "Tahun sebelumnya", { year-- }, size = 46.dp)
-                Box(Modifier.width(74.dp).height(46.dp).clip(RoundedCornerShape(15.dp)).background(K.Field), contentAlignment = Alignment.Center) {
-                    Text("$year", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = K.Ink)
-                }
-                SquareButton(Icons.Rounded.ChevronRight, "Tahun berikutnya", { year++ }, size = 46.dp)
-                Spacer(Modifier.weight(1f))
-                CreamButton("Batal", Modifier.width(78.dp), onClick = onDismiss)
-                RedButton("Pilih", Modifier.width(78.dp)) {
+            Spacer(Modifier.height(12.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                CreamButton("Batal", Modifier.weight(1f), onClick = onDismiss)
+                RedButton("Pilih", Modifier.weight(1f)) {
                     val day = if (m == "week") week * 7 + 1 else 1
-                    onConfirm(m, Calendar.getInstance().apply { set(year, if (m == "year") 0 else month, day, 12, 0, 0) }.timeInMillis)
+                    val chosen = Calendar.getInstance().apply {
+                        clear()
+                        set(year, if (m == "year") 0 else month, day, 12, 0, 0)
+                    }.timeInMillis
+                    onConfirm(m, chosen)
                 }
             }
         }
