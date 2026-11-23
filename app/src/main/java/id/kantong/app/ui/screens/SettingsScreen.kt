@@ -302,6 +302,19 @@ fun SettingsScreen(d: AppData, vm: AppViewModel, nav: Nav) {
                 onClick = { nav.go(R.DEBTS) },
             )
             CListRow("charity", "Zakat & sedekah", "Hitung zakat, pantau sedekah", onClick = { nav.go(R.ZAKAT) })
+            val wctx = androidx.compose.ui.platform.LocalContext.current
+            CListRow("report", "Widget anggaran & catat", "Pasang di layar utama (4×2)", onClick = {
+                val mgr = android.appwidget.AppWidgetManager.getInstance(wctx)
+                if (mgr.isRequestPinAppWidgetSupported) {
+                    mgr.requestPinAppWidget(android.content.ComponentName(wctx, id.kantong.app.widget.BudgetWidgetReceiver::class.java), null, null)
+                }
+            })
+            CListRow("bill", "Widget catat cepat", "Satu baris tombol kategori (4×1)", onClick = {
+                val mgr = android.appwidget.AppWidgetManager.getInstance(wctx)
+                if (mgr.isRequestPinAppWidgetSupported) {
+                    mgr.requestPinAppWidget(android.content.ComponentName(wctx, id.kantong.app.widget.QuickWidgetReceiver::class.java), null, null)
+                }
+            })
             CListRow("bookmark", "Bookmark", "${d.starred.size} transaksi", onClick = { nav.go(R.BOOKMARKS) })
             CListRow(
                 "jar", "Target tabungan",

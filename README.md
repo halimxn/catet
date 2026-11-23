@@ -83,6 +83,9 @@ The visual style follows the "R89" reference: warm cream background, deep green 
 - Send a polite reminder through WhatsApp with one tap (you press send).
 - Patungan: split any spending record between friends; your share stays as spending, theirs become receivables.
 
+**Home screen widgets**
+- Catat cepat (4×1) and Anggaran & catat (4×2): quick entry by category and the remaining budget at a glance.
+
 **Zakat and sedekah**
 - Zakat maal against the 85 g gold nisab (gold price fetched online), monthly zakat on income, and a sedekah target with history.
 
@@ -151,7 +154,6 @@ adb install -r app/build/outputs/apk/release/app-release.apk
 ## Roadmap
 
 - [ ] Receipt photos with on-device OCR
-- [ ] Home screen widget
 - [ ] Monthly PDF export
 - [ ] Transaction detection from notifications (on-device)
 - [ ] Logging streaks and badges

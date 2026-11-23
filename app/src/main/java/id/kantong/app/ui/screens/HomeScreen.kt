@@ -97,6 +97,9 @@ fun HomeScreen(d: AppData, vm: AppViewModel, nav: Nav) {
     var open by remember { mutableStateOf<Txn?>(null) }
     var splitTx by remember { mutableStateOf<Txn?>(null) }
     var budget by remember { mutableStateOf(false) }
+    androidx.compose.runtime.LaunchedEffect(id.kantong.app.data.LaunchAction.budget) {
+        if (id.kantong.app.data.LaunchAction.budget) { id.kantong.app.data.LaunchAction.budget = false; budget = true }
+    }
     var period by remember { mutableStateOf(false) }
     var ledgerMenu by remember { mutableStateOf(false) }
     val ledgerAnchor = rememberAnchor()

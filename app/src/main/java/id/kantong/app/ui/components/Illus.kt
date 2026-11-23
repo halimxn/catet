@@ -1,5 +1,7 @@
 package id.kantong.app.ui.components
 
+import androidx.compose.ui.graphics.asAndroidBitmap
+
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.runtime.remember
@@ -489,3 +491,7 @@ private fun DrawScope.drawIllus(key: String) {
         }
     }
 }
+
+/** Two-tone icon as an Android bitmap (home-screen widgets). */
+fun illusBitmap(key: String, px: Int): android.graphics.Bitmap =
+    cachedBitmap("illus:$key", px, 48f) { drawIllus(key) }.asAndroidBitmap()

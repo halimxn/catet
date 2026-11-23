@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">catet</string>
+    <string name="widget_quick_desc">Catat pengeluaran dengan sekali ketuk</string>
+    <string name="widget_budget_desc">Sisa anggaran dan tombol catat</string>
 </resources>

@@ -29,6 +29,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         id.kantong.app.data.Prefs.init(this)
+        id.kantong.app.data.LaunchAction.handle(intent)
         Reminder.restore(this) // re-arms the daily reminder if it is on
         lifecycle.addObserver(object : DefaultLifecycleObserver {
             override fun onStop(owner: LifecycleOwner) { AutoBackup.onAppBackground(this@MainActivity) }
@@ -51,5 +52,10 @@ class MainActivity : ComponentActivity() {
                 KantongTheme { LockGate { KantongApp() } }
             }
         }
+    }
+
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        id.kantong.app.data.LaunchAction.handle(intent)
     }
 }

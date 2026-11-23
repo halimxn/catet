@@ -107,7 +107,7 @@ fun AddTransactionScreen(d: AppData, vm: AppViewModel, nav: Nav, editId: Long) {
     var feeExpr by rememberSaveable { mutableStateOf("") }
     var feeMode by rememberSaveable { mutableStateOf(false) } // transfer only: keypad types into the fee
     var remark by rememberSaveable { mutableStateOf("") }
-    var pickedCat by rememberSaveable { mutableLongStateOf(0L) }
+    var pickedCat by rememberSaveable { mutableLongStateOf(vm.takeAddCategory()) }
     var pickedAcc by rememberSaveable { mutableLongStateOf(0L) }
     var fromId by rememberSaveable { mutableLongStateOf(0L) }
     var toId by rememberSaveable { mutableLongStateOf(0L) }

@@ -1,5 +1,7 @@
 package id.kantong.app.data
 
+import kotlinx.coroutines.flow.collectLatest
+
 import android.app.Application
 import android.content.Context
 import android.net.Uri
@@ -164,8 +166,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private var pendingAddKind: String? = null
     fun startAdd(kind: String) { pendingAddKind = kind }
     fun takeAddKind(): String? = pendingAddKind.also { pendingAddKind = null }
+    private var pendingAddCat: Long = 0L
+    fun startAddCategory(id: Long) { pendingAddCat = id }
+    fun takeAddCategory(): Long = pendingAddCat.also { pendingAddCat = 0L }
 
     init {
+        // Keep home-screen widgets in step with the data (debounced).
+        viewModelScope.launch {
+            data.collectLatest { d -> if (d.loaded) { kotlinx.coroutines.delay(800); id.kantong.app.widget.CatetWidgets.refresh(getApplication()) } }
+        }
         // Receipt photos were removed as a feature: clear any files left from testing (records keep an unused name).
         viewModelScope.launch(Dispatchers.IO) { runCatching { java.io.File(app.filesDir, "receipts").deleteRecursively() } }
         viewModelScope.launch(Dispatchers.IO) {

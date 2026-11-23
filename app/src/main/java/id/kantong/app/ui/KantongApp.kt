@@ -137,6 +137,17 @@ fun KantongApp() {
     // The system splash stays up until data is loaded (MainActivity), so there is no second splash here.
     if (!data.loaded) { Box(Modifier.fillMaxSize().background(K.Bg)); return }
     if (!id.kantong.app.data.Prefs.onboarded) { id.kantong.app.ui.screens.OnboardingScreen(data, vm); return }
+    // Widget taps: open Catat (with the chosen category) or the budget sheet on Beranda.
+    androidx.compose.runtime.LaunchedEffect(id.kantong.app.data.LaunchAction.add) {
+        if (id.kantong.app.data.LaunchAction.add) {
+            id.kantong.app.data.LaunchAction.add = false
+            vm.startAdd("out"); vm.startAddCategory(id.kantong.app.data.LaunchAction.category)
+            nav.go(R.add())
+        }
+    }
+    androidx.compose.runtime.LaunchedEffect(id.kantong.app.data.LaunchAction.budget) {
+        if (id.kantong.app.data.LaunchAction.budget) { tab = R.HOME; while (controller.previousBackStackEntry != null) controller.popBackStack() }
+    }
     CompositionLocalProvider(LocalOverlayHost provides overlays) { Box(Modifier.fillMaxSize().background(K.Bg)) {
         // Tabs stay composed once visited, so switching tabs only shows what is already built.
         ShowIf(onMain) {

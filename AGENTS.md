@@ -240,12 +240,12 @@ Baca file ini **sebelum mengubah apa pun**. Semua aturan di sini sudah disetujui
 - Utang & piutang (`data/Debts.kt`, `ui/screens/DebtScreen.kt`, tabel `debts` + `debt_pays`, DB v4 `MIGRATION_3_4`). Arisan sengaja tidak dibuat (keputusan pemilik).
   - Rute `R.DEBTS`, `R.debt(id)`; masuk dari kartu ringkas di Aset dan Saya › Kelola. Piutang/utang ikut kekayaan bersih.
   - Cicilan bulanan terjadwal (`installments`, `firstDue`), status lewat jatuh tempo, "Ingatkan via WA" (wa.me, pengguna yang menekan kirim).
+- Widget layar utama (Jetpack Glance, `widget/CatetWidgets.kt`): **Catat cepat 4×1** (hari ini + 3 kategori favorit + "Catat") dan **Anggaran & catat 4×2** (sisa anggaran, bar, chip kategori ≥80%, 4 kategori + "Catat"). Ketuk kategori → Catat dengan kategori terpilih (`LaunchAction`, `vm.startAddCategory`); ketuk anggaran → `BudgetSheet`. Diperbarui saat data berubah. Pasang dari Saya › Kelola (`requestPinAppWidget`).
 - Zakat & sedekah (`ui/screens/ZakatScreen.kt`, rute `R.ZAKAT`, dari Saya › Kelola): zakat maal 2,5% bila harta (uang + investasi + piutang − utang) ≥ nisab 85 g × harga emas Antam buyback (`Prefs.zakatGold`), dikurangi zakat yang sudah dibayar sejak awal haul (`Prefs.haulStart`); zakat penghasilan 2,5% bila pemasukan bulan ini ≥ nisab/12; target sedekah (`Prefs.sedekahTarget`). Bayar/catat lewat `vm.recordCharity` (kategori "Zakat"/"Sedekah" dibuat otomatis).
   - Patungan dari `RecordDetailCard` (`onSplit`, `SplitSheet`): catatan pengeluaran jadi bagian sendiri, bagian teman jadi piutang lewat transfer dari akun yang sama sehingga saldo tidak berubah.
 
 **Belum dibuat** (rencana berikutnya, urut prioritas):
 1. **Foto/pindai struk: DITUNDA** (keputusan pemilik). Sempat dibuat lalu dicabut. Kolom `Txn.photo` dan `Txn.items` (DB v6–v7, `MIGRATION_5_6`, `MIGRATION_6_7`) tetap ada tapi tidak dipakai; jangan dihapus karena migrasi tidak bisa dibalik.
-6. **Widget layar utama:** sisa uang dan jatah harian, memakai gaya kartu kuning.
 7. **Ekspor PDF laporan bulanan.**
 8. **Deteksi notifikasi transaksi** on-device (izin notification listener).
 9. **Gamifikasi ringan:** streak mencatat dan lencana, tetap tanpa maskot.
