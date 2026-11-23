@@ -4,6 +4,7 @@ import id.kantong.app.ui.screens.HoldingScreen
 import id.kantong.app.ui.screens.DebtsScreen
 import id.kantong.app.ui.screens.ZakatScreen
 import id.kantong.app.ui.screens.DetectScreen
+import id.kantong.app.ui.screens.AchieveScreen
 import id.kantong.app.ui.screens.DebtDetailScreen
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.EnterTransition
@@ -106,6 +107,7 @@ object R {
     fun debt(id: Long) = "debt/$id"
     const val DEBTS = "debts"
     const val DETECT = "detect"
+    const val ACHIEVE = "achieve"
     const val ZAKAT = "zakat"
     fun accountEdit(id: Long = 0) = "account_edit/$id"
     fun types(kind: String) = "types/$kind"
@@ -187,6 +189,7 @@ fun KantongApp() {
             }
             composable(R.DEBTS) { Screen { DebtsScreen(data, vm, nav) } }
             composable(R.DETECT) { Screen { DetectScreen(data, vm, nav) } }
+            composable(R.ACHIEVE) { Screen { AchieveScreen(data, nav) } }
             composable(R.ZAKAT) { Screen { ZakatScreen(data, vm, nav) } }
             composable("debt/{id}", listOf(navArgument("id") { type = NavType.LongType })) { e ->
                 Screen { DebtDetailScreen(data, vm, nav, e.arguments?.getLong("id") ?: 0L) }

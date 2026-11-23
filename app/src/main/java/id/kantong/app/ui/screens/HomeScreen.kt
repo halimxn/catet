@@ -36,6 +36,7 @@ import androidx.compose.material.icons.rounded.ArrowDownward
 import androidx.compose.material.icons.rounded.ArrowUpward
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.LocalFireDepartment
 import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Settings
@@ -153,6 +154,23 @@ fun HomeScreen(d: AppData, vm: AppViewModel, nav: Nav) {
                     if (current) fmt(System.currentTimeMillis(), "EEEE, d MMM") + " · sisa $daysLeft hari" else "${monthTx.size} catatan",
                     fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = K.Muted,
                 )
+            }
+            // streak chip: solid when today is recorded, dashed while it still waits for a record
+            val streak = remember(d.allTxns) { streakOf(d) }
+            Row(
+                Modifier.padding(end = 8.dp).height(46.dp).clip(RoundedCornerShape(23.dp)).background(if (streak.today) K.Yellow else K.Tile)
+                    .drawBehind {
+                        if (!streak.today) drawRoundRect(
+                            K.ChartOut, cornerRadius = androidx.compose.ui.geometry.CornerRadius(23.dp.toPx()),
+                            style = androidx.compose.ui.graphics.drawscope.Stroke(1.5.dp.toPx(), pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(5.dp.toPx(), 4.dp.toPx()))),
+                        )
+                    }
+                    .pressable { nav.go(R.ACHIEVE) }.padding(start = 10.dp, end = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(Icons.Rounded.LocalFireDepartment, "Pencapaian", tint = K.ChartOut, modifier = Modifier.size(23.dp))
+                Spacer(Modifier.width(3.dp))
+                Text("${streak.current}", fontSize = 17.sp, fontWeight = FontWeight.ExtraBold, color = if (streak.today) K.Ink else K.Muted)
             }
             Box(
                 Modifier.size(46.dp).clip(CircleShape).background(K.Tile).border(1.dp, K.Line, CircleShape).pressable { nav.go(R.SEARCH) },
@@ -325,6 +343,7 @@ fun HomeScreen(d: AppData, vm: AppViewModel, nav: Nav) {
     if (period) PeriodSheet(onDismiss = { period = false }, d = d)
     if (budget) BudgetSheet(d, vm) { budget = false }
     if (review) DetectReviewSheet(d, vm) { review = false }
+    BadgeWatcher(d)
     open?.let { t ->
         val cur = d.allTxns.firstOrNull { it.id == t.id } ?: t
         RecordDetailCard(

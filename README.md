@@ -92,6 +92,9 @@ The visual style follows the "R89" reference: warm cream background, deep green 
 **Automatic detection from notifications**
 - Reads payment and transfer notifications from supported bank and e-wallet apps (BCA, Mandiri, BRI, BNI, GoPay, OVO, DANA, ShopeePay and more) into waiting records with a guessed category and account. Save, review or skip from Beranda or the notification itself. Runs entirely on the device; OTPs and promos are ignored and notification text is not stored.
 
+**Streaks and badges**
+- A small flame on Beranda counts days in a row with at least one record. The Pencapaian screen shows the month at a glance and nine badges earned from everyday habits, with no mascot.
+
 **Zakat and sedekah**
 - Zakat maal against the 85 g gold nisab (gold price fetched online), monthly zakat on income, and a sedekah target with history.
 
@@ -161,7 +164,7 @@ adb install -r app/build/outputs/apk/release/app-release.apk
 
 - [ ] Receipt photos with on-device OCR
 - [x] Transaction detection from notifications (on-device)
-- [ ] Logging streaks and badges
+- [x] Logging streaks and badges
 - [ ] Dark mode
 
 ## License

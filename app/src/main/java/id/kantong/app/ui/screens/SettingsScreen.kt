@@ -302,6 +302,7 @@ fun SettingsScreen(d: AppData, vm: AppViewModel, nav: Nav) {
                 onClick = { nav.go(R.DEBTS) },
             )
             CListRow("charity", "Zakat & sedekah", "Hitung zakat, pantau sedekah", onClick = { nav.go(R.ZAKAT) })
+            CListRow("salary", "Pencapaian", "Streak mencatat dan lencana", onClick = { nav.go(R.ACHIEVE) })
             CListRow(
                 "phone", "Deteksi otomatis",
                 if (id.kantong.app.data.Prefs.detectOn) "Aktif · dari notifikasi bank & e-wallet" else "Catat dari notifikasi bank & e-wallet",

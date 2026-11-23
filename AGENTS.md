@@ -251,9 +251,13 @@ Baca file ini **sebelum mengubah apa pun**. Semua aturan di sini sudah disetujui
   - Kategori ditebak dari catatan terakhir dengan nama toko yang sama, lalu kata kunci; rekening dari pilihan per aplikasi (`Prefs.detectAccount`) atau nama/jenis akun.
   - Hasil masuk kartu merah muda "Menunggu dicatat" di Beranda (sebelum tagihan, ikon lonceng) dan notifikasi Catet dengan aksi Catat / Tinjau / Lewati (`DetectActionReceiver`, `LaunchAction.review`). `DetectReviewSheet` untuk memeriksa kategori/rekening; tanda "Mirip catatan" bila nominal sama dalam 2 hari.
 
+- Gamifikasi ringan tanpa maskot (`ui/screens/AchieveScreen.kt`, rute `R.ACHIEVE`, dari chip api di Beranda dan Saya › Kelola).
+  - `streakOf`: hari dengan ≥1 catatan; streak tetap hidup sampai satu hari penuh terlewat tanpa catatan. Chip Beranda solid bila hari ini sudah mencatat, bergaris putus bila belum.
+  - `badgesOf`: 9 lencana dari data yang ada (catatan pertama, 7 & 30 hari beruntun, 100 catatan, pas anggaran bulan lalu, target tabungan, target sedekah, bebas utang, sebulan tanpa absen). Lencana yang pernah didapat disimpan di `Prefs.badgeTime` dan tidak hilang.
+  - `BadgeWatcher` (di Beranda) menampilkan `BadgeSheet` sekali untuk lencana baru; pemeriksaan pertama (`Prefs.badgesInit`) menandai lencana lama sebagai sudah dilihat.
+
 **Belum dibuat** (rencana berikutnya, urut prioritas):
 1. **Foto/pindai struk: DITUNDA** (keputusan pemilik). Sempat dibuat lalu dicabut. Kolom `Txn.photo` dan `Txn.items` (DB v6–v7, `MIGRATION_5_6`, `MIGRATION_6_7`) tetap ada tapi tidak dipakai; jangan dihapus karena migrasi tidak bisa dibalik.
-9. **Gamifikasi ringan:** streak mencatat dan lencana, tetap tanpa maskot.
 10. **Mode gelap:** butuh token gelap tersendiri; jangan sekadar membalik warna.
 
 ## 7. Struktur kode dan data
