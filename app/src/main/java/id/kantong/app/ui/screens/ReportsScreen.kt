@@ -23,6 +23,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.Description
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -98,6 +99,7 @@ fun ReportsScreen(d: AppData, vm: AppViewModel, nav: Nav) {
     var summaryKind by rememberSaveable { mutableStateOf("out") }
     var ledgerMenu by remember { mutableStateOf(false) }
     var periodOpen by remember { mutableStateOf(false) }
+    var pdfOpen by remember { mutableStateOf(false) }
     val ledgerAnchor = rememberAnchor()
 
     val v = d.forLedger(Prefs.ledger)
@@ -133,6 +135,8 @@ fun ReportsScreen(d: AppData, vm: AppViewModel, nav: Nav) {
                     )
                 }
             }
+            CRoundButton(Icons.Rounded.Description, "Ekspor PDF", { pdfOpen = true }, size = 38.dp)
+            Spacer(Modifier.width(8.dp))
             CRoundButton(Icons.Rounded.Search, "Cari", { nav.go(R.SEARCH) }, size = 38.dp)
             Spacer(Modifier.width(8.dp))
             CChip(periodLabel(mode, from, to) + " ▾", bg = K.Tile, border = true, height = 38.dp) { periodOpen = true }
@@ -273,6 +277,7 @@ fun ReportsScreen(d: AppData, vm: AppViewModel, nav: Nav) {
             PillOption("Kelola buku kas", Tone.PEACH, false, { ledgerMenu = false; nav.go(R.LEDGERS) }, glyph = Icons.Rounded.Settings)
         }
     }
+    if (pdfOpen) PdfExportSheet(d, from) { pdfOpen = false }
     if (periodOpen) {
         PeriodCard(mode, if (mode == "month") from else anchor, { periodOpen = false }) { m, a ->
             mode = m

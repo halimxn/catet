@@ -83,6 +83,9 @@ The visual style follows the "R89" reference: warm cream background, deep green 
 - Send a polite reminder through WhatsApp with one tap (you press send).
 - Patungan: split any spending record between friends; your share stays as spending, theirs become receivables.
 
+**Monthly PDF report**
+- Summary vs last month, automatic insights, daily chart, budgets, income sources, account balances, net worth and the transaction list, saved or shared as an A4 PDF.
+
 **Home screen widgets**
 - Catat cepat (4×1) and Anggaran & catat (4×2): quick entry by category and the remaining budget at a glance.
 
@@ -154,7 +157,6 @@ adb install -r app/build/outputs/apk/release/app-release.apk
 ## Roadmap
 
 - [ ] Receipt photos with on-device OCR
-- [ ] Monthly PDF export
 - [ ] Transaction detection from notifications (on-device)
 - [ ] Logging streaks and badges
 - [ ] Dark mode
