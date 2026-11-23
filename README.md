@@ -89,6 +89,9 @@ The visual style follows the "R89" reference: warm cream background, deep green 
 **Home screen widgets**
 - Catat cepat (4×1) and Anggaran & catat (4×2): quick entry by category and the remaining budget at a glance.
 
+**Automatic detection from notifications**
+- Reads payment and transfer notifications from supported bank and e-wallet apps (BCA, Mandiri, BRI, BNI, GoPay, OVO, DANA, ShopeePay and more) into waiting records with a guessed category and account. Save, review or skip from Beranda or the notification itself. Runs entirely on the device; OTPs and promos are ignored and notification text is not stored.
+
 **Zakat and sedekah**
 - Zakat maal against the 85 g gold nisab (gold price fetched online), monthly zakat on income, and a sedekah target with history.
 
@@ -157,7 +160,7 @@ adb install -r app/build/outputs/apk/release/app-release.apk
 ## Roadmap
 
 - [ ] Receipt photos with on-device OCR
-- [ ] Transaction detection from notifications (on-device)
+- [x] Transaction detection from notifications (on-device)
 - [ ] Logging streaks and badges
 - [ ] Dark mode
 

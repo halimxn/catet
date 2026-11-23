@@ -245,9 +245,14 @@ Baca file ini **sebelum mengubah apa pun**. Semua aturan di sini sudah disetujui
 - Zakat & sedekah (`ui/screens/ZakatScreen.kt`, rute `R.ZAKAT`, dari Saya › Kelola): zakat maal 2,5% bila harta (uang + investasi + piutang − utang) ≥ nisab 85 g × harga emas Antam buyback (`Prefs.zakatGold`), dikurangi zakat yang sudah dibayar sejak awal haul (`Prefs.haulStart`); zakat penghasilan 2,5% bila pemasukan bulan ini ≥ nisab/12; target sedekah (`Prefs.sedekahTarget`). Bayar/catat lewat `vm.recordCharity` (kategori "Zakat"/"Sedekah" dibuat otomatis).
   - Patungan dari `RecordDetailCard` (`onSplit`, `SplitSheet`): catatan pengeluaran jadi bagian sendiri, bagian teman jadi piutang lewat transfer dari akun yang sama sehingga saldo tidak berubah.
 
+- Deteksi otomatis dari notifikasi (`data/NotifParser.kt`, `data/Detector.kt`, `ui/screens/DetectScreen.kt`, rute `R.DETECT`, dari Saya › Kelola; tabel `detected`, DB v8 `MIGRATION_7_8`).
+  - `TxnListener` (NotificationListenerService) hanya membaca aplikasi di `DetectApps`; izin akses notifikasi dinyalakan pengguna sendiri di pengaturan Android. Semua di HP, teks asli tidak disimpan.
+  - `NotifParser` (tanpa dependensi Android, diuji di `app/src/test/.../NotifParserTest.kt`): nominal pertama yang bukan saldo/biaya, arah masuk/keluar dari kata kunci, nama toko/pengirim; OTP, promo, gagal, dan teks tanpa arah dilewati. Ulangan sama dalam 10 menit diabaikan.
+  - Kategori ditebak dari catatan terakhir dengan nama toko yang sama, lalu kata kunci; rekening dari pilihan per aplikasi (`Prefs.detectAccount`) atau nama/jenis akun.
+  - Hasil masuk kartu merah muda "Menunggu dicatat" di Beranda (sebelum tagihan, ikon lonceng) dan notifikasi Catet dengan aksi Catat / Tinjau / Lewati (`DetectActionReceiver`, `LaunchAction.review`). `DetectReviewSheet` untuk memeriksa kategori/rekening; tanda "Mirip catatan" bila nominal sama dalam 2 hari.
+
 **Belum dibuat** (rencana berikutnya, urut prioritas):
 1. **Foto/pindai struk: DITUNDA** (keputusan pemilik). Sempat dibuat lalu dicabut. Kolom `Txn.photo` dan `Txn.items` (DB v6–v7, `MIGRATION_5_6`, `MIGRATION_6_7`) tetap ada tapi tidak dipakai; jangan dihapus karena migrasi tidak bisa dibalik.
-8. **Deteksi notifikasi transaksi** on-device (izin notification listener).
 9. **Gamifikasi ringan:** streak mencatat dan lencana, tetap tanpa maskot.
 10. **Mode gelap:** butuh token gelap tersendiri; jangan sekadar membalik warna.
 

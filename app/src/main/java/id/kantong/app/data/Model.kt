@@ -163,6 +163,22 @@ data class DebtPay(
     val txnId: Long = 0,
 )
 
+/** A transaction read from a bank / e-wallet notification, waiting for the user to save or skip it. */
+@Entity(tableName = "detected")
+data class Detected(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val pkg: String, // app that posted the notification
+    val app: String, // its display name
+    val amount: Long,
+    val kind: String, // out | in
+    val merchant: String,
+    val time: Long,
+    val key: String, // pkg|amount|kind|merchant, to ignore repeats
+    val categoryId: Long? = null, // guessed
+    val accountId: Long = 0, // guessed
+    val status: Int = 0, // 0 = waiting, 1 = saved, 2 = skipped
+)
+
 @Dao
 interface KantongDao {
     @Query("SELECT * FROM accounts ORDER BY id") fun accounts(): Flow<List<Account>>
@@ -238,6 +254,15 @@ interface KantongDao {
     @Query("DELETE FROM debts") suspend fun clearDebts()
     @Query("DELETE FROM debt_pays") suspend fun clearDebtPays()
 
+    @Query("SELECT * FROM detected ORDER BY time DESC") fun detected(): Flow<List<Detected>>
+    @Query("SELECT * FROM detected WHERE id = :id") suspend fun detectedById(id: Long): Detected?
+    @Query("SELECT COUNT(*) FROM detected WHERE `key` = :key AND time > :since") suspend fun detectedSince(key: String, since: Long): Int
+    @Query("SELECT categoryId FROM transactions WHERE kind = :kind AND merchant = :merchant COLLATE NOCASE AND categoryId IS NOT NULL ORDER BY time DESC LIMIT 1")
+    suspend fun lastCategoryFor(kind: String, merchant: String): Long?
+    @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun upsertDetected(x: Detected): Long
+    @Query("UPDATE detected SET status = :status WHERE id = :id") suspend fun setDetectedStatus(id: Long, status: Int)
+    @Query("DELETE FROM detected WHERE time < :before") suspend fun pruneDetected(before: Long)
+
     @Query("DELETE FROM accounts") suspend fun clearAccounts()
     @Query("DELETE FROM categories") suspend fun clearCategories()
     @Query("DELETE FROM transactions") suspend fun clearTxns()
@@ -245,7 +270,7 @@ interface KantongDao {
     @Query("DELETE FROM bills") suspend fun clearBills()
 }
 
-@Database(entities = [Account::class, Category::class, Txn::class, Goal::class, Bill::class, Ledger::class, Budget::class, Holding::class, InvTxn::class, Debt::class, DebtPay::class], version = 7, exportSchema = false)
+@Database(entities = [Account::class, Category::class, Txn::class, Goal::class, Bill::class, Ledger::class, Budget::class, Holding::class, InvTxn::class, Debt::class, DebtPay::class, Detected::class], version = 8, exportSchema = false)
 abstract class KantongDb : RoomDatabase() {
     abstract fun dao(): KantongDao
 }
@@ -256,6 +281,17 @@ abstract class KantongDb : RoomDatabase() {
 /** v4 -> v5: yearly coupon for bonds. */
 /** v5 -> v6: receipt photo on records. */
 /** v6 -> v7: receipt line items on records. */
+/** v7 -> v8: transactions detected from notifications. */
+val MIGRATION_7_8 = object : Migration(7, 8) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `detected` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `pkg` TEXT NOT NULL, `app` TEXT NOT NULL, " +
+                "`amount` INTEGER NOT NULL, `kind` TEXT NOT NULL, `merchant` TEXT NOT NULL, `time` INTEGER NOT NULL, `key` TEXT NOT NULL, " +
+                "`categoryId` INTEGER, `accountId` INTEGER NOT NULL, `status` INTEGER NOT NULL)",
+        )
+    }
+}
+
 val MIGRATION_6_7 = object : Migration(6, 7) {
     override fun migrate(db: SupportSQLiteDatabase) {
         db.execSQL("ALTER TABLE transactions ADD COLUMN items TEXT NOT NULL DEFAULT ''")

@@ -23,6 +23,9 @@ object Prefs {
     private var _haul by mutableStateOf("0")
     private var _sedekah by mutableStateOf("0")
     private var _zgold by mutableStateOf("0")
+    private var _detectOn by mutableStateOf(false)
+    private var _detectOff by mutableStateOf("")
+    private var _detectAcc by mutableStateOf("")
     private var _haptics by mutableStateOf(true)
     private var _colorBg by mutableStateOf(false)
     private var _colorIcon by mutableStateOf(true)
@@ -53,6 +56,9 @@ object Prefs {
         _haul = p.getString("haul", "0") ?: "0"
         _sedekah = p.getString("sedekah_target", "0") ?: "0"
         _zgold = p.getString("zakat_gold", "0") ?: "0"
+        _detectOn = p.getBoolean("detect_on", false)
+        _detectOff = p.getString("detect_off", "") ?: ""
+        _detectAcc = p.getString("detect_acc", "") ?: ""
         _haptics = p.getBoolean("haptics", true)
         _colorBg = p.getBoolean("style_bg", false)
         _colorIcon = p.getBoolean("style_icon", true)
@@ -94,6 +100,20 @@ object Prefs {
     /** Zakat: start of the haul year (0 = not set), monthly sedekah target, gold price per gram for the nisab. */
     var haulStart: Long get() = _haul.toLongOrNull() ?: 0L; set(v) { _haul = v.toString(); put("haul", v.toString()) }
     var sedekahTarget: Long get() = _sedekah.toLongOrNull() ?: 0L; set(v) { _sedekah = v.toString(); put("sedekah_target", v.toString()) }
+    /** Read bank / e-wallet notifications into draft records. */
+    var detectOn: Boolean get() = _detectOn; set(v) { _detectOn = v; put("detect_on", v) }
+    /** Apps the user switched off for detection. */
+    fun detectEnabled(pkg: String) = pkg !in _detectOff.split(',')
+    fun setDetectEnabled(pkg: String, on: Boolean) {
+        val set = _detectOff.split(',').filter { it.isNotBlank() && it != pkg }.let { if (on) it else it + pkg }
+        _detectOff = set.joinToString(","); put("detect_off", _detectOff)
+    }
+    /** Account chosen for an app's detections (0 = guess). */
+    fun detectAccount(pkg: String): Long = _detectAcc.split(';').firstOrNull { it.startsWith("$pkg=") }?.substringAfter('=')?.toLongOrNull() ?: 0L
+    fun setDetectAccount(pkg: String, id: Long) {
+        _detectAcc = (_detectAcc.split(';').filter { it.isNotBlank() && !it.startsWith("$pkg=") } + "$pkg=$id").joinToString(";"); put("detect_acc", _detectAcc)
+    }
+
     var zakatGold: Long get() = _zgold.toLongOrNull() ?: 0L; set(v) { _zgold = v.toString(); put("zakat_gold", v.toString()) }
     /** Vibrate on keypad taps. */
     var haptics: Boolean get() = _haptics; set(v) { _haptics = v; put("haptics", v) }

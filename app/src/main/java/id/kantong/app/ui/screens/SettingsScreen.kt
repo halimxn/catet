@@ -302,6 +302,11 @@ fun SettingsScreen(d: AppData, vm: AppViewModel, nav: Nav) {
                 onClick = { nav.go(R.DEBTS) },
             )
             CListRow("charity", "Zakat & sedekah", "Hitung zakat, pantau sedekah", onClick = { nav.go(R.ZAKAT) })
+            CListRow(
+                "phone", "Deteksi otomatis",
+                if (id.kantong.app.data.Prefs.detectOn) "Aktif · dari notifikasi bank & e-wallet" else "Catat dari notifikasi bank & e-wallet",
+                onClick = { nav.go(R.DETECT) },
+            )
             val wctx = androidx.compose.ui.platform.LocalContext.current
             CListRow("report", "Widget anggaran & catat", "Pasang di layar utama (4×2)", onClick = {
                 val mgr = android.appwidget.AppWidgetManager.getInstance(wctx)

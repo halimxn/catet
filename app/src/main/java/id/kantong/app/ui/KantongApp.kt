@@ -3,6 +3,7 @@ package id.kantong.app.ui
 import id.kantong.app.ui.screens.HoldingScreen
 import id.kantong.app.ui.screens.DebtsScreen
 import id.kantong.app.ui.screens.ZakatScreen
+import id.kantong.app.ui.screens.DetectScreen
 import id.kantong.app.ui.screens.DebtDetailScreen
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.EnterTransition
@@ -104,6 +105,7 @@ object R {
     fun holding(id: Long) = "holding/$id"
     fun debt(id: Long) = "debt/$id"
     const val DEBTS = "debts"
+    const val DETECT = "detect"
     const val ZAKAT = "zakat"
     fun accountEdit(id: Long = 0) = "account_edit/$id"
     fun types(kind: String) = "types/$kind"
@@ -148,6 +150,9 @@ fun KantongApp() {
     androidx.compose.runtime.LaunchedEffect(id.kantong.app.data.LaunchAction.budget) {
         if (id.kantong.app.data.LaunchAction.budget) { tab = R.HOME; while (controller.previousBackStackEntry != null) controller.popBackStack() }
     }
+    androidx.compose.runtime.LaunchedEffect(id.kantong.app.data.LaunchAction.review) {
+        if (id.kantong.app.data.LaunchAction.review) { tab = R.HOME; while (controller.previousBackStackEntry != null) controller.popBackStack() }
+    }
     CompositionLocalProvider(LocalOverlayHost provides overlays) { Box(Modifier.fillMaxSize().background(K.Bg)) {
         // Tabs stay composed once visited, so switching tabs only shows what is already built.
         ShowIf(onMain) {
@@ -181,6 +186,7 @@ fun KantongApp() {
                 Screen { LedgerDetailScreen(data, vm, nav, e.arguments?.getLong("id") ?: 0L) }
             }
             composable(R.DEBTS) { Screen { DebtsScreen(data, vm, nav) } }
+            composable(R.DETECT) { Screen { DetectScreen(data, vm, nav) } }
             composable(R.ZAKAT) { Screen { ZakatScreen(data, vm, nav) } }
             composable("debt/{id}", listOf(navArgument("id") { type = NavType.LongType })) { e ->
                 Screen { DebtDetailScreen(data, vm, nav, e.arguments?.getLong("id") ?: 0L) }

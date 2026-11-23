@@ -21,7 +21,7 @@ import org.json.JSONObject
 object Db {
     @Volatile private var db: KantongDb? = null
     fun get(ctx: Context): KantongDb = db ?: synchronized(this) {
-        db ?: Room.databaseBuilder(ctx.applicationContext, KantongDb::class.java, "kantong.db").addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7).build().also { db = it }
+        db ?: Room.databaseBuilder(ctx.applicationContext, KantongDb::class.java, "kantong.db").addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8).build().also { db = it }
     }
 }
 
@@ -43,7 +43,11 @@ data class AppData(
     val invTxns: List<InvTxn> = emptyList(),
     val debts: List<Debt> = emptyList(),
     val debtPays: List<DebtPay> = emptyList(),
+    val detected: List<Detected> = emptyList(),
 ) {
+    /** Notification detections still waiting to be saved or skipped, newest first. */
+    val pendingDetected: List<Detected> get() = detected.filter { it.status == 0 }
+
     // ----- debts -----
     fun debt(id: Long): Debt? = debts.firstOrNull { it.id == id }
     fun debtState(x: Debt): DebtState = DebtState.of(x, debtPays.filter { it.debtId == x.id })
@@ -147,12 +151,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     val data: StateFlow<AppData> = combine(
         combine(dao.accounts(), dao.categories(), dao.transactions(), dao.goals(), dao.bills()) { a, c, t, g, b -> AppData(a, c, t, g, b, loaded = true) },
         combine(dao.ledgers(), dao.budgets(), dao.holdings(), dao.invTxns()) { l, b, h, it2 -> listOf(l, b, h, it2) },
-        combine(dao.debts(), dao.debtPays()) { x, p -> x to p },
+        combine(dao.debts(), dao.debtPays(), dao.detected()) { x, p, n -> Triple(x, p, n) },
     ) { d, rest, dp ->
         @Suppress("UNCHECKED_CAST")
         d.copy(
             ledgers = rest[0] as List<Ledger>, budgets = rest[1] as List<Budget>, holdings = rest[2] as List<Holding>,
-            invTxns = rest[3] as List<InvTxn>, debts = dp.first, debtPays = dp.second,
+            invTxns = rest[3] as List<InvTxn>, debts = dp.first, debtPays = dp.second, detected = dp.third,
         )
     }
         .stateIn(viewModelScope, SharingStarted.Eagerly, AppData())
@@ -190,6 +194,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun saveTxn(t: Txn) = viewModelScope.launch(Dispatchers.IO) { dao.upsertTxn(t) }
+    /** Saves a notification detection as a record (with the category/account the user picked). */
+    fun saveDetected(x: Detected, categoryId: Long?, accountId: Long) =
+        viewModelScope.launch(Dispatchers.IO) { Detector.save(getApplication(), x.id, categoryId, accountId) }
+    fun skipDetected(ids: List<Long>) = viewModelScope.launch(Dispatchers.IO) { ids.forEach { Detector.skip(getApplication(), it) } }
     fun deleteTxn(t: Txn) = viewModelScope.launch(Dispatchers.IO) { dao.deleteTxn(t) }
     fun saveCategory(c: Category) = viewModelScope.launch(Dispatchers.IO) { dao.upsertCategory(c) }
     fun saveGoal(g: Goal) = viewModelScope.launch(Dispatchers.IO) { dao.upsertGoal(g) }

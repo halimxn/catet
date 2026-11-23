@@ -36,6 +36,7 @@ import androidx.compose.material.icons.rounded.ArrowDownward
 import androidx.compose.material.icons.rounded.ArrowUpward
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Visibility
@@ -97,6 +98,10 @@ fun HomeScreen(d: AppData, vm: AppViewModel, nav: Nav) {
     var open by remember { mutableStateOf<Txn?>(null) }
     var splitTx by remember { mutableStateOf<Txn?>(null) }
     var budget by remember { mutableStateOf(false) }
+    var review by remember { mutableStateOf(false) }
+    androidx.compose.runtime.LaunchedEffect(id.kantong.app.data.LaunchAction.review) {
+        if (id.kantong.app.data.LaunchAction.review) { id.kantong.app.data.LaunchAction.review = false; if (d.pendingDetected.isNotEmpty()) review = true }
+    }
     androidx.compose.runtime.LaunchedEffect(id.kantong.app.data.LaunchAction.budget) {
         if (id.kantong.app.data.LaunchAction.budget) { id.kantong.app.data.LaunchAction.budget = false; budget = true }
     }
@@ -190,42 +195,59 @@ fun HomeScreen(d: AppData, vm: AppViewModel, nav: Nav) {
             }
         }
 
-        // pink card: bills due and not yet recorded this month
+        // pink card: everything waiting to be recorded — notification detections first, then bills due
         if (current) {
             val due = d.bills.filter { it.paidMonthKey != monthKey() && it.dueDay <= dayOfMonth() + 3 }.sortedBy { it.dueDay }
-            due.firstOrNull()?.let { b ->
+            val found = d.pendingDetected
+            val waiting = found.size + due.size
+            val x = found.firstOrNull()
+            val b = due.firstOrNull()
+            if (x != null || b != null) {
                 val soft = K.OnPink
                 CCard(K.Pink, Modifier.padding(top = 14.dp), radius = 30.dp) {
                     // label row: what this card is, and how many are waiting
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text("Menunggu dicatat", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = soft, modifier = Modifier.weight(1f))
-                        if (due.size > 1) Text(
-                            "1 dari ${due.size}", fontSize = 12.5.sp, fontWeight = FontWeight.Bold, color = soft,
+                        if (waiting > 1) Text(
+                            "1 dari $waiting", fontSize = 12.5.sp, fontWeight = FontWeight.Bold, color = soft,
                             modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(Color(0x66FFFFFF)).padding(horizontal = 10.dp, vertical = 3.dp),
                         )
                     }
                     Spacer(Modifier.height(10.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(Modifier.size(44.dp).clip(CircleShape).background(Color(0x80FFFFFF)), contentAlignment = Alignment.Center) {
-                            CatIcon(b.icon.ifBlank { "bill" }, 30.dp)
+                            CatIcon(if (x != null) d.category(x.categoryId)?.icon ?: "bill" else b!!.icon.ifBlank { "bill" }, 30.dp)
                         }
                         Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {
-                            Text(b.name, fontSize = 17.sp, fontWeight = FontWeight.ExtraBold, color = K.Ink, maxLines = 1)
-                            Text(if (b.dueDay < dayOfMonth()) "Lewat tanggal ${b.dueDay}" else "Jatuh tempo tanggal ${b.dueDay}", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = soft)
+                            Text(x?.merchant ?: b!!.name, fontSize = 17.sp, fontWeight = FontWeight.ExtraBold, color = K.Ink, maxLines = 1)
+                            if (x != null) Row(verticalAlignment = Alignment.CenterVertically) {
+                                // bell = read from a notification, so it never gets mixed up with a bill
+                                Icon(Icons.Rounded.NotificationsActive, null, tint = soft, modifier = Modifier.size(14.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text("${x.app} · ${whenText(x.time)}", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = soft, maxLines = 1)
+                            } else Text(
+                                if (b!!.dueDay < dayOfMonth()) "Lewat tanggal ${b.dueDay}" else "Jatuh tempo tanggal ${b.dueDay}",
+                                fontSize = 13.sp, fontWeight = FontWeight.Medium, color = soft,
+                            )
                         }
-                        Text(if (hidden) "•••••" else "−" + b.amount.grouped(), fontSize = 17.sp, fontWeight = FontWeight.ExtraBold, color = K.Ink, maxLines = 1)
+                        val amt = if (x != null) (if (x.kind == "in") "+" else "−") + x.amount.grouped() else "−" + b!!.amount.grouped()
+                        Text(if (hidden) "•••••" else amt, fontSize = 17.sp, fontWeight = FontWeight.ExtraBold, color = K.Ink, maxLines = 1)
                     }
                     Spacer(Modifier.height(14.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
                         // secondary action blends into the pink card; the green one is the clear next step
                         Box(
-                            Modifier.weight(1f).height(46.dp).clip(RoundedCornerShape(15.dp)).background(Color(0x73FFFFFF)).pressable { nav.go(R.RECURRING) },
+                            Modifier.weight(1f).height(46.dp).clip(RoundedCornerShape(15.dp)).background(Color(0x73FFFFFF))
+                                .pressable { if (x != null) review = true else nav.go(R.RECURRING) },
                             contentAlignment = Alignment.Center,
-                        ) { Text("Ubah", fontSize = 15.5.sp, fontWeight = FontWeight.Bold, color = soft) }
+                        ) { Text(if (x != null) "Tinjau" else "Ubah", fontSize = 15.5.sp, fontWeight = FontWeight.Bold, color = soft) }
                         Row(
                             Modifier.weight(1.4f).height(46.dp).clip(RoundedCornerShape(15.dp)).background(K.Green)
-                                .pressable { d.accounts.firstOrNull()?.let { vm.payBill(b, it.id) } },
+                                .pressable {
+                                    if (x != null) vm.saveDetected(x, x.categoryId, x.accountId)
+                                    else d.accounts.firstOrNull()?.let { vm.payBill(b!!, it.id) }
+                                },
                             horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Icon(Icons.Rounded.Check, null, tint = Color.White, modifier = Modifier.size(18.dp))
@@ -302,6 +324,7 @@ fun HomeScreen(d: AppData, vm: AppViewModel, nav: Nav) {
     }
     if (period) PeriodSheet(onDismiss = { period = false }, d = d)
     if (budget) BudgetSheet(d, vm) { budget = false }
+    if (review) DetectReviewSheet(d, vm) { review = false }
     open?.let { t ->
         val cur = d.allTxns.firstOrNull { it.id == t.id } ?: t
         RecordDetailCard(
