@@ -240,11 +240,11 @@ Baca file ini **sebelum mengubah apa pun**. Semua aturan di sini sudah disetujui
 - Utang & piutang (`data/Debts.kt`, `ui/screens/DebtScreen.kt`, tabel `debts` + `debt_pays`, DB v4 `MIGRATION_3_4`). Arisan sengaja tidak dibuat (keputusan pemilik).
   - Rute `R.DEBTS`, `R.debt(id)`; masuk dari kartu ringkas di Aset dan Saya › Kelola. Piutang/utang ikut kekayaan bersih.
   - Cicilan bulanan terjadwal (`installments`, `firstDue`), status lewat jatuh tempo, "Ingatkan via WA" (wa.me, pengguna yang menekan kirim).
+- Zakat & sedekah (`ui/screens/ZakatScreen.kt`, rute `R.ZAKAT`, dari Saya › Kelola): zakat maal 2,5% bila harta (uang + investasi + piutang − utang) ≥ nisab 85 g × harga emas Antam buyback (`Prefs.zakatGold`), dikurangi zakat yang sudah dibayar sejak awal haul (`Prefs.haulStart`); zakat penghasilan 2,5% bila pemasukan bulan ini ≥ nisab/12; target sedekah (`Prefs.sedekahTarget`). Bayar/catat lewat `vm.recordCharity` (kategori "Zakat"/"Sedekah" dibuat otomatis).
   - Patungan dari `RecordDetailCard` (`onSplit`, `SplitSheet`): catatan pengeluaran jadi bagian sendiri, bagian teman jadi piutang lewat transfer dari akun yang sama sehingga saldo tidak berubah.
 
 **Belum dibuat** (rencana berikutnya, urut prioritas):
-1. **Zakat & sedekah:** kalkulator sederhana dari aset, dibuka dari "Kelola".
-2. **Foto struk** di transaksi, ditampilkan sebagai thumbnail di lembar detail. Setelah itu OCR struk on-device (ML Kit).
+1. **Foto struk** di transaksi, ditampilkan sebagai thumbnail di lembar detail. Setelah itu OCR struk on-device (ML Kit).
 6. **Widget layar utama:** sisa uang dan jatah harian, memakai gaya kartu kuning.
 7. **Ekspor PDF laporan bulanan.**
 8. **Deteksi notifikasi transaksi** on-device (izin notification listener).

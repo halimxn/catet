@@ -83,6 +83,9 @@ The visual style follows the "R89" reference: warm cream background, deep green 
 - Send a polite reminder through WhatsApp with one tap (you press send).
 - Patungan: split any spending record between friends; your share stays as spending, theirs become receivables.
 
+**Zakat and sedekah**
+- Zakat maal against the 85 g gold nisab (gold price fetched online), monthly zakat on income, and a sedekah target with history.
+
 **Assets and goals**
 - Cash and e-wallets, banks, credit cards and debts, with net worth.
 - Savings goals with progress.
@@ -147,7 +150,6 @@ adb install -r app/build/outputs/apk/release/app-release.apk
 
 ## Roadmap
 
-- [ ] Zakat and sedekah calculator
 - [ ] Receipt photos with on-device OCR
 - [ ] Home screen widget
 - [ ] Monthly PDF export

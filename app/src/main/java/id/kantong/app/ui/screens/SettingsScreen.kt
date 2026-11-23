@@ -301,6 +301,7 @@ fun SettingsScreen(d: AppData, vm: AppViewModel, nav: Nav) {
                 if (d.receivable == 0L && d.payable == 0L) "Pinjaman dan patungan" else "Piutang ${d.receivable.rupiah()} · utang ${d.payable.rupiah()}",
                 onClick = { nav.go(R.DEBTS) },
             )
+            CListRow("charity", "Zakat & sedekah", "Hitung zakat, pantau sedekah", onClick = { nav.go(R.ZAKAT) })
             CListRow("bookmark", "Bookmark", "${d.starred.size} transaksi", onClick = { nav.go(R.BOOKMARKS) })
             CListRow(
                 "jar", "Target tabungan",

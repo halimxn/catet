@@ -213,6 +213,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         )
         dao.upsertInvTxn(t.copy(holdingId = hid, txnId = txnId))
     }
+    /** Zakat or sedekah as a spending record; the category ("Zakat" / "Sedekah") is created when missing. */
+    fun recordCharity(categoryName: String, amount: Long, accountId: Long, note: String, time: Long) = viewModelScope.launch(Dispatchers.IO) {
+        val cat = dao.allCategories().firstOrNull { it.kind == "out" && it.parentId == 0L && it.name.equals(categoryName, true) }
+        val catId = cat?.id ?: dao.upsertCategory(Category(name = categoryName, icon = "charity", tone = "PEACH", kind = "out", sortOrder = 99))
+        dao.upsertTxn(Txn(amount = amount, kind = "out", categoryId = catId, accountId = accountId, merchant = note, time = time, ledgerId = if (Prefs.ledger > 0) Prefs.ledger else 1))
+    }
+
     // ----- debts -----
     /** Saves a new loan; with an account the money moves (lend = out of it, borrow = into it) as a transfer. */
     fun addDebt(x: Debt, accountId: Long) = viewModelScope.launch(Dispatchers.IO) {

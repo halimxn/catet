@@ -2,6 +2,7 @@ package id.kantong.app.ui
 
 import id.kantong.app.ui.screens.HoldingScreen
 import id.kantong.app.ui.screens.DebtsScreen
+import id.kantong.app.ui.screens.ZakatScreen
 import id.kantong.app.ui.screens.DebtDetailScreen
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.EnterTransition
@@ -103,6 +104,7 @@ object R {
     fun holding(id: Long) = "holding/$id"
     fun debt(id: Long) = "debt/$id"
     const val DEBTS = "debts"
+    const val ZAKAT = "zakat"
     fun accountEdit(id: Long = 0) = "account_edit/$id"
     fun types(kind: String) = "types/$kind"
 }
@@ -168,6 +170,7 @@ fun KantongApp() {
                 Screen { LedgerDetailScreen(data, vm, nav, e.arguments?.getLong("id") ?: 0L) }
             }
             composable(R.DEBTS) { Screen { DebtsScreen(data, vm, nav) } }
+            composable(R.ZAKAT) { Screen { ZakatScreen(data, vm, nav) } }
             composable("debt/{id}", listOf(navArgument("id") { type = NavType.LongType })) { e ->
                 Screen { DebtDetailScreen(data, vm, nav, e.arguments?.getLong("id") ?: 0L) }
             }

@@ -20,6 +20,9 @@ object Prefs {
     private var _showInvest by mutableStateOf(true)
     private var _broker by mutableStateOf("ajaib")
     private var _ihsg by mutableStateOf("")
+    private var _haul by mutableStateOf("0")
+    private var _sedekah by mutableStateOf("0")
+    private var _zgold by mutableStateOf("0")
     private var _haptics by mutableStateOf(true)
     private var _colorBg by mutableStateOf(false)
     private var _colorIcon by mutableStateOf(true)
@@ -47,6 +50,9 @@ object Prefs {
         _showInvest = p.getBoolean("showInvest", true)
         _broker = p.getString("broker", "ajaib") ?: "ajaib"
         _ihsg = p.getString("ihsg", "") ?: ""
+        _haul = p.getString("haul", "0") ?: "0"
+        _sedekah = p.getString("sedekah_target", "0") ?: "0"
+        _zgold = p.getString("zakat_gold", "0") ?: "0"
         _haptics = p.getBoolean("haptics", true)
         _colorBg = p.getBoolean("style_bg", false)
         _colorIcon = p.getBoolean("style_icon", true)
@@ -85,6 +91,10 @@ object Prefs {
     var broker: String get() = _broker; set(v) { _broker = v; put("broker", v) }
     /** Last IHSG quote: "price|prevClose|time". */
     var ihsg: String get() = _ihsg; set(v) { _ihsg = v; put("ihsg", v) }
+    /** Zakat: start of the haul year (0 = not set), monthly sedekah target, gold price per gram for the nisab. */
+    var haulStart: Long get() = _haul.toLongOrNull() ?: 0L; set(v) { _haul = v.toString(); put("haul", v.toString()) }
+    var sedekahTarget: Long get() = _sedekah.toLongOrNull() ?: 0L; set(v) { _sedekah = v.toString(); put("sedekah_target", v.toString()) }
+    var zakatGold: Long get() = _zgold.toLongOrNull() ?: 0L; set(v) { _zgold = v.toString(); put("zakat_gold", v.toString()) }
     /** Vibrate on keypad taps. */
     var haptics: Boolean get() = _haptics; set(v) { _haptics = v; put("haptics", v) }
 
