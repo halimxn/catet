@@ -157,6 +157,9 @@ private fun typography() = Typography(
     labelSmall = s(11, FontWeight.Medium),
 )
 
+/** Start of today, refreshed every minute by [isDarkTheme]; key anything that must roll over at midnight on it. */
+object AppClock { var day by androidx.compose.runtime.mutableLongStateOf(id.kantong.app.data.startOfDay()) }
+
 /** Light, dark or follow the phone; "gelap otomatis malam" turns dark between 18.00 and 06.00. */
 @Composable
 fun isDarkTheme(): Boolean {
@@ -164,7 +167,11 @@ fun isDarkTheme(): Boolean {
     var hour by androidx.compose.runtime.remember { androidx.compose.runtime.mutableIntStateOf(java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)) }
     // re-check the clock every minute so the scheduled switch happens while the app is open
     androidx.compose.runtime.LaunchedEffect(Unit) {
-        while (true) { kotlinx.coroutines.delay(60_000); hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY) }
+        while (true) {
+            kotlinx.coroutines.delay(60_000)
+            hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
+            AppClock.day = id.kantong.app.data.startOfDay()
+        }
     }
     val night = hour >= 18 || hour < 6
     return when {
@@ -199,7 +206,8 @@ fun KantongTheme(content: @Composable () -> Unit) {
         surfaceContainerLow = K.Sheet, surfaceContainer = K.Sheet, surfaceContainerHigh = K.Sheet,
         outline = K.Line, error = K.Red,
     )
-    MaterialTheme(colorScheme = scheme, typography = typography()) {
+    val type = androidx.compose.runtime.remember { typography() }
+    MaterialTheme(colorScheme = scheme, typography = type) {
         androidx.compose.runtime.CompositionLocalProvider(androidx.compose.material3.LocalContentColor provides K.Ink, content = content)
     }
 }

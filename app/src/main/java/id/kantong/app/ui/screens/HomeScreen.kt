@@ -156,7 +156,7 @@ fun HomeScreen(d: AppData, vm: AppViewModel, nav: Nav) {
                 )
             }
             // streak chip: solid when today is recorded, dashed while it still waits for a record
-            val streak = remember(d.allTxns) { streakOf(d) }
+            val streak = remember(d.allTxns, id.kantong.app.ui.theme.AppClock.day) { streakOf(d) }
             Row(
                 Modifier.padding(end = 8.dp).height(46.dp).clip(RoundedCornerShape(23.dp)).background(if (streak.today) K.Yellow else K.Tile)
                     .drawBehind {

@@ -372,5 +372,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val debts = arrOrEmpty("debts").map { Debt(it.getLong("id"), it.getString("person"), it.getString("direction"), it.getLong("amount"), it.getLong("time"), it.optLong("dueDate"), it.optString("note"), it.optInt("installments"), it.optLong("firstDue"), it.optInt("settled"), it.optLong("txnId"), it.optLong("sourceTxnId")) }
         val pays = arrOrEmpty("debtPays").map { DebtPay(it.getLong("id"), it.getLong("debtId"), it.getLong("amount"), it.getLong("time"), it.optLong("txnId")) }
         dao.clearDebts(); dao.clearDebtPays(); dao.insertDebts(debts); dao.insertDebtPays(pays)
+        dao.clearDetected()
     }
 }

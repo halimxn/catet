@@ -262,6 +262,9 @@ interface KantongDao {
     suspend fun lastCategoryFor(kind: String, merchant: String): Long?
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun upsertDetected(x: Detected): Long
     @Query("UPDATE detected SET status = :status WHERE id = :id") suspend fun setDetectedStatus(id: Long, status: Int)
+    /** Marks a waiting detection as saved/skipped; returns 0 if someone else already did (no double records). */
+    @Query("UPDATE detected SET status = :status WHERE id = :id AND status = 0") suspend fun claimDetected(id: Long, status: Int): Int
+    @Query("DELETE FROM detected") suspend fun clearDetected()
     @Query("DELETE FROM detected WHERE time < :before") suspend fun pruneDetected(before: Long)
 
     @Query("DELETE FROM accounts") suspend fun clearAccounts()

@@ -41,6 +41,7 @@ import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import id.kantong.app.MainActivity
+import kotlinx.coroutines.sync.withLock
 import id.kantong.app.data.AppData
 import id.kantong.app.data.Category
 import id.kantong.app.data.Db
@@ -59,11 +60,20 @@ private class WData(
     val warnings: List<Pair<String, Int>>, // name, percent used (>100 = over)
     val favorites: List<Category>, val hidden: Boolean, val month: String,
     val leftMonth: Long, val perDay: Long, val lastDays: List<Pair<String, Long>>, // weekday letter, spent (oldest first, today last)
-    val streak: Int, val recordedToday: Boolean, val recentDays: List<Boolean>, val waiting: Int,
+    val streak: Int, val recordedToday: Boolean, val recentDays: List<Boolean>, val waiting: Int, val waitingDetected: Int,
 )
 
-private suspend fun load(ctx: Context): WData {
-    Prefs.init(ctx)
+// every placed widget loads during one refresh: share a single snapshot for a few seconds
+private val loadLock = kotlinx.coroutines.sync.Mutex()
+private var cached: Pair<Long, WData>? = null
+
+private suspend fun load(ctx: Context): WData = loadLock.withLock {
+    cached?.takeIf { System.currentTimeMillis() - it.first < 3_000 }?.let { return@withLock it.second }
+    loadFresh(ctx).also { cached = System.currentTimeMillis() to it }
+}
+
+private suspend fun loadFresh(ctx: Context): WData {
+    Prefs.ensure(ctx)
     val dao = Db.get(ctx).dao()
     val txns = dao.allTransactions()
     val all = AppData(
@@ -98,7 +108,7 @@ private suspend fun load(ctx: Context): WData {
         (daysInMonth() - dayOfMonth() + 1).coerceAtLeast(1), warnings, favorites, Prefs.hideAmounts,
         java.text.SimpleDateFormat("MMMM", java.util.Locale("in", "ID")).format(java.util.Date()),
         v.incomeMonth - v.spentMonth, v.safePerDay, lastDays, s.current, s.today, recent,
-        dao.pendingDetectedCount() + dueBills,
+        dao.pendingDetectedCount() + dueBills, dao.pendingDetectedCount(),
     )
 }
 
@@ -404,7 +414,7 @@ class WaitWidget : GlanceAppWidget() {
         val d = load(context)
         provideContent {
             Half(
-                K.Pink, openApp(context, if (d.waiting > 0) "review" else "home"), K.Well,
+                K.Pink, openApp(context, if (d.waitingDetected > 0) "review" else "home"), K.Well,
                 { Text(if (d.waiting > 9) "9+" else "${d.waiting}", style = TextStyle(fontSize = 17.sp, fontWeight = FontWeight.Bold, color = K.OnPink)) },
                 if (d.waiting > 0) "Menunggu" else "Semua beres", K.Ink, if (d.waiting > 0) "dicatat" else "tidak ada tunggakan", K.OnPink,
             )
@@ -423,13 +433,12 @@ class WaitWidgetReceiver : GlanceAppWidgetReceiver() { override val glanceAppWid
 /** Redraws every widget (called after data changes). Widgets not on the home screen cost nothing. */
 object CatetWidgets {
     suspend fun refresh(ctx: Context) {
-        runCatching { QuickWidget().updateAll(ctx) }
-        runCatching { BudgetWidget().updateAll(ctx) }
-        runCatching { MonthWidget().updateAll(ctx) }
-        runCatching { DailyWidget().updateAll(ctx) }
-        runCatching { StreakWidget().updateAll(ctx) }
-        runCatching { CatatWidget().updateAll(ctx) }
-        runCatching { WaitWidget().updateAll(ctx) }
+        cached = null
+        val mgr = androidx.glance.appwidget.GlanceAppWidgetManager(ctx)
+        listOf(QuickWidget(), BudgetWidget(), MonthWidget(), DailyWidget(), StreakWidget(), CatatWidget(), WaitWidget()).forEach { w ->
+            // only widgets that are actually on the home screen
+            runCatching { if (mgr.getGlanceIds(w.javaClass).isNotEmpty()) w.updateAll(ctx) }
+        }
     }
 }
 

@@ -185,8 +185,9 @@ internal fun Medal(b: Badge, size: Dp) {
 
 @Composable
 fun AchieveScreen(d: AppData, nav: Nav) {
-    val s = remember(d) { streakOf(d) }
-    val badges = remember(d) { badgesOf(d, s) }
+    val day = id.kantong.app.ui.theme.AppClock.day
+    val s = remember(d, day) { streakOf(d) }
+    val badges = remember(d, day) { badgesOf(d, s) }
     var open by remember { mutableStateOf<Badge?>(null) }
     val monthStart = startOfMonth()
     val today = dayOfMonth()
@@ -344,7 +345,8 @@ internal fun BadgeWatcher(d: AppData) {
     var fresh by remember { mutableStateOf<Badge?>(null) }
     LaunchedEffect(d) {
         if (!d.loaded) return@LaunchedEffect
-        val met = badgesOf(d, streakOf(d)).filter { it.met && Prefs.badgeTime(it.key) == 0L }
+        // off the main thread: the full-month check walks every day since the first record
+        val met = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) { badgesOf(d, streakOf(d)) }.filter { it.met && Prefs.badgeTime(it.key) == 0L }
         if (met.isEmpty()) { if (!Prefs.badgesInit) Prefs.badgesInit = true; return@LaunchedEffect }
         val now = System.currentTimeMillis()
         met.forEach { Prefs.earnBadge(it.key, now) }

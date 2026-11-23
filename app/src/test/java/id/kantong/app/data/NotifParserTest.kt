@@ -40,4 +40,9 @@ class NotifParserTest {
     @Test fun failedIgnored() = assertNull(p("GoPay", "Pembayaran Rp10.000 gagal"))
     @Test fun noAmountIgnored() = assertNull(p("Shopee", "Pesanan kamu sedang dikirim", "Shopee"))
     @Test fun noDirectionIgnored() = assertNull(p("BCA", "Info Rp10.000", "BCA mobile"))
+
+    @Test fun paymentRequestIgnored() = assertNull(p("Shopee", "Selesaikan pembayaran Rp150.000 sebelum 23.59", "Shopee"))
+    @Test fun bankTopUpIsOut() = assertEquals("out", NotifParser.parse("BCA", "Top up OVO Rp100.000 berhasil", "BCA mobile", "bank")?.kind)
+    @Test fun walletTopUpIsIn() = assertEquals("in", NotifParser.parse("OVO", "Top up OVO Cash Rp100.000 berhasil", "OVO", "ewallet")?.kind)
+    @Test fun creditCardIsOut() = assertEquals("out", NotifParser.parse("BCA", "Transaksi kartu kredit Rp250.000 di TOKOPEDIA berhasil", "BCA mobile", "bank")?.kind)
 }

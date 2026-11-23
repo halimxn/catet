@@ -181,6 +181,7 @@ object AutoBackup {
         val dao = Db.get(ctx).dao()
         dao.clearTxns(); dao.clearBills(); dao.clearGoals(); dao.clearBudgets()
         dao.clearCategories(); dao.clearAccounts(); dao.clearLedgers()
+        dao.clearHoldings(); dao.clearInvTxns(); dao.clearDebts(); dao.clearDebtPays(); dao.clearDetected()
         dao.insertLedgers(listOf(Ledger(1, "Harian", "ledger", "PEACH", sortOrder = 1)))
         dao.insertCategories(Seed.categories())
         dao.insertAccounts(listOf(Account(name = "Dompet", type = "cash", openingBalance = 0, tone = "BUTTER")))

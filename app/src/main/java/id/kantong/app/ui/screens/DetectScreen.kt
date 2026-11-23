@@ -124,7 +124,7 @@ fun DetectScreen(d: AppData, vm: AppViewModel, nav: Nav) {
 
     val pm = ctx.packageManager
     val installed = remember { DetectApps.all.filter { runCatching { pm.getPackageInfo(it.pkg, 0) }.isSuccess } }
-    val others = DetectApps.all.filter { it !in installed }.map { it.name }.distinct()
+    val others = remember(installed) { DetectApps.all.filter { it !in installed }.map { it.name }.distinct() }
     val on = Prefs.detectOn
     val active = on && access
     val monthStart = startOfMonth()

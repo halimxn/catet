@@ -40,10 +40,10 @@ object NotifParser {
 
     private val secret = Regex("(?i)(\\botp\\b|kode verifikasi|kode rahasia|kode aktivasi|kode keamanan|verification code|jangan (berikan|bagikan|beritahu)|\\bpassword\\b|kata sandi|perangkat baru|login)")
     private val promo = Regex("(?i)(promo|diskon|voucher|kupon|cashback (hingga|s\\.?d|sampai|up to)|gratis ongkir|jangan lewatkan|hemat (hingga|sampai)|nikmati|dapatkan|\\bayo\\b|\\byuk\\b|hanya hari ini|berlaku hingga|klaim)")
-    private val failed = Regex("(?i)(gagal|dibatalkan|ditolak|tidak berhasil|failed|pending|menunggu pembayaran|segera bayar|jatuh tempo|tagihan .* akan)")
+    private val failed = Regex("(?i)(gagal|dibatalkan|ditolak|tidak berhasil|failed|pending|menunggu pembayaran|segera bayar|selesaikan|lakukan pembayaran|batas (waktu )?pembayaran|bayar sebelum|sebelum pukul|jatuh tempo|tagihan .* akan)")
     private val amountRx = Regex("(?i)(?:rp\\.?|idr)\\s?([0-9]{1,3}(?:[.,][0-9]{3})+|[0-9]+)(?:[.,]([0-9]{1,2}))?(?![0-9])")
     private val notAmount = Regex("(?i)(saldo|sisa|biaya|admin|limit|cashback|poin|minimal|min\\.)\\s*(akhir|kamu|anda|aktif|tersedia)?\\s*:?\\s*$")
-    private val inRx = Regex("(?i)(dana masuk|uang masuk|transfer masuk|saldo masuk|masuk ke (rekening|akun|saldo)|menerima|diterima|terima (dana|uang|transfer|saldo)|\\bkredit\\b|\\bcr\\b|incoming|refund|pengembalian dana|top ?up|isi saldo|received)")
+    private val inRx = Regex("(?i)(dana masuk|uang masuk|transfer masuk|saldo masuk|masuk ke (rekening|akun|saldo)|menerima|diterima|terima (dana|uang|transfer|saldo)|\\bcr\\b|incoming|refund|pengembalian dana|received)")
     private val outRx = Regex("(?i)(pembayaran|bayar|dibayar|pembelian|beli |transfer ke|transfer keluar|transfer berhasil|dana keluar|uang keluar|\\bdebit\\b|\\bdb\\b|tarik tunai|penarikan|qris|purchase|payment|terkirim|mengirim|kirim (uang|saldo|dana)|transaksi)")
     private val stop = "(?=\\s+(?:sebesar|senilai|rp\\.?|idr|pada|tgl|tanggal|via|telah|berhasil|sukses|sudah|dengan|melalui|menggunakan|jam|pukul|ref|no\\.?|ke|di|untuk)\\b|\\s*[.,;:()!\\n]|\\s+rp|$)"
     private val fromRx = Regex("(?i)\\b(?:dari|from|pengirim)\\s*:?\\s+([^\\n.,;:()!]{2,40}?)$stop")
@@ -51,7 +51,10 @@ object NotifParser {
     private val holder = Regex("(?i)\\ba\\.?\\s?n\\.?\\s+([a-z][a-z .']{1,30}?)(?=\\s*[,;:()!\\n]|\\s+(?:sebesar|senilai|rp|idr|pada|berhasil)\\b|$)")
     private val generic = Regex("(?i)^(rekening|akun|saldo|aplikasi|kamu|anda|sana|sini|nomor|no|va|virtual account|bank|e-?wallet|dompet|merchant|toko|sebesar|transaksi|pembayaran)\\b.*|^[0-9].*")
 
-    fun parse(title: String, text: String, appName: String): Parsed? {
+    private val topUp = Regex("(?i)(top ?up|isi saldo)")
+
+    /** [appType] "bank" or "ewallet": a top up is money in for the e-wallet but money out of the bank. */
+    fun parse(title: String, text: String, appName: String, appType: String = "ewallet"): Parsed? {
         val all = "$title\n$text".trim()
         if (all.isBlank() || secret.containsMatchIn(all) || failed.containsMatchIn(all)) return null
         val amount = amountRx.findAll(all).firstNotNullOfOrNull { m ->
@@ -59,8 +62,9 @@ object NotifParser {
             else m.groupValues[1].replace(".", "").replace(",", "").toLongOrNull()
         } ?: return null
         if (amount < 100 || amount > 10_000_000_000L) return null
-        val inAt = inRx.find(all)?.range?.first ?: Int.MAX_VALUE
-        val outAt = outRx.find(all)?.range?.first ?: Int.MAX_VALUE
+        val topAt = topUp.find(all)?.range?.first ?: Int.MAX_VALUE
+        val inAt = minOf(inRx.find(all)?.range?.first ?: Int.MAX_VALUE, if (appType == "bank") Int.MAX_VALUE else topAt)
+        val outAt = minOf(outRx.find(all)?.range?.first ?: Int.MAX_VALUE, if (appType == "bank") topAt else Int.MAX_VALUE)
         if (inAt == Int.MAX_VALUE && outAt == Int.MAX_VALUE) return null
         // promos often carry an amount; only accept them when they also read like a finished transaction
         if (promo.containsMatchIn(all) && !Regex("(?i)(berhasil|sukses|telah|sudah)").containsMatchIn(all)) return null

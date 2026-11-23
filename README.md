@@ -106,7 +106,7 @@ The visual style follows the "R89" reference: warm cream background, deep green 
 - Savings goals with progress.
 
 **Privacy and data**
-- No analytics or tracking. The only network call sends a stock ticker (e.g. BBCA.JK) to fetch its price.
+- No analytics or tracking. The app only goes online when you refresh prices or open Zakat: it sends a stock ticker (e.g. BBCA.JK) to Yahoo Finance and reads the public gold (Galeri24) and bond (IBPA) price pages. Notification detection runs entirely on the phone.
 - PIN lock, automatic backups through the Storage Access Framework, JSON and CSV export/import.
 
 ## Design system

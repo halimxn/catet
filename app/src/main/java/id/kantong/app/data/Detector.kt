@@ -23,6 +23,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.withLock
 
 /** Turns bank / e-wallet notifications into waiting records, and saves or skips them. Everything stays on the device. */
 object Detector {
@@ -32,10 +33,15 @@ object Detector {
 
     fun hasAccess(ctx: Context) = NotificationManagerCompat.getEnabledListenerPackages(ctx).contains(ctx.packageName)
 
-    suspend fun handle(ctx: Context, pkg: String, title: String, text: String, time: Long) {
+    // banks often post the same notification twice at once: one at a time, so the repeat check sees the first
+    private val lock = kotlinx.coroutines.sync.Mutex()
+
+    suspend fun handle(ctx: Context, pkg: String, title: String, text: String, time: Long) = lock.withLock { handleLocked(ctx, pkg, title, text, time) }
+
+    private suspend fun handleLocked(ctx: Context, pkg: String, title: String, text: String, time: Long) {
         val app = DetectApps.of(pkg) ?: return
         if (!Prefs.detectOn || !Prefs.detectEnabled(pkg)) return
-        val p = NotifParser.parse(title, text, app.name) ?: return
+        val p = NotifParser.parse(title, text, app.name, app.type) ?: return
         val dao = Db.get(ctx).dao()
         val key = "$pkg|${p.amount}|${p.kind}|${p.merchant.lowercase()}"
         if (dao.detectedSince(key, time - REPEAT_MS) > 0) return
@@ -47,6 +53,7 @@ object Detector {
         val id = dao.upsertDetected(x)
         dao.pruneDetected(time - KEEP_MS)
         notify(ctx, x.copy(id = id), cats.firstOrNull { it.id == cat }?.name, accs.firstOrNull { it.id == acc }?.name)
+        runCatching { CatetWidgets.refresh(ctx) }
     }
 
     private fun guessCategory(cats: List<Category>, p: NotifParser.Parsed): Long? {
@@ -66,22 +73,25 @@ object Detector {
     suspend fun save(ctx: Context, id: Long, categoryId: Long?, accountId: Long) {
         val dao = Db.get(ctx).dao()
         val x = dao.detectedById(id) ?: return
-        if (x.status != 0) return
-        val acc = accountId.takeIf { it != 0L } ?: x.accountId.takeIf { it != 0L } ?: dao.allAccounts().firstOrNull()?.id ?: return
+        val accs = dao.allAccounts()
+        // the chosen or guessed account may have been deleted since; fall back to one that exists
+        val acc = listOf(accountId, x.accountId).firstOrNull { a -> a != 0L && accs.any { it.id == a } } ?: accs.firstOrNull()?.id ?: return
+        val cat = (categoryId ?: x.categoryId)?.takeIf { c -> dao.allCategories().any { it.id == c } }
+        if (dao.claimDetected(id, 1) == 0) return // already saved or skipped (double tap, notification + sheet)
         dao.upsertTxn(
             Txn(
-                amount = x.amount, kind = x.kind, categoryId = categoryId ?: x.categoryId, accountId = acc, merchant = x.merchant,
+                amount = x.amount, kind = x.kind, categoryId = cat, accountId = acc, merchant = x.merchant,
                 time = x.time, ledgerId = Prefs.ledger.takeIf { it != 0L } ?: 1L,
             ),
         )
-        dao.setDetectedStatus(id, 1)
         cancel(ctx, id)
         runCatching { CatetWidgets.refresh(ctx) }
     }
 
     suspend fun skip(ctx: Context, id: Long) {
-        Db.get(ctx).dao().setDetectedStatus(id, 2)
+        Db.get(ctx).dao().claimDetected(id, 2)
         cancel(ctx, id)
+        runCatching { CatetWidgets.refresh(ctx) }
     }
 
     private fun nid(id: Long) = 5000 + (id % 100_000).toInt()
