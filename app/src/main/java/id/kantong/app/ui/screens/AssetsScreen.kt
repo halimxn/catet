@@ -1,5 +1,13 @@
 package id.kantong.app.ui.screens
 
+import androidx.compose.foundation.layout.Arrangement
+
+import androidx.compose.foundation.shape.CircleShape
+
+import androidx.compose.foundation.layout.fillMaxHeight
+
+import androidx.compose.ui.draw.alpha
+
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
@@ -473,7 +481,9 @@ fun AssetsScreen(d: AppData, vm: AppViewModel, nav: Nav) {
         assetChartSeries(mode, ASSET_RANGE_DAYS[range], d.totalBalance, if (mode == 0) d.allTxns else d.forLedger(ledgerId).txns, ::netEffect)
     }
     val hidden = Prefs.hideAmounts
-    val net = d.totalBalance
+    val cash = d.totalBalance
+    val invest = if (Prefs.showInvest) d.investValue else 0L
+    val net = cash + invest
     val groups = remember(d) { accountGroups(d) }
 
     Column(
@@ -503,15 +513,28 @@ fun AssetsScreen(d: AppData, vm: AppViewModel, nav: Nav) {
             }
             Spacer(Modifier.height(4.dp))
             Money(net, 44.sp, color = if (net < 0) K.Danger else K.Green, hidden = hidden)
-            Spacer(Modifier.height(12.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                HeroStat("Aset", money(d.assetsTotal, hidden), K.Green, Modifier.weight(1f))
-                Box(Modifier.padding(horizontal = 16.dp).width(1.5.dp).height(38.dp).background(K.YellowLine))
-                HeroStat("Utang", money(abs(d.liabilitiesTotal), hidden), K.Danger, Modifier.weight(1f))
+            if (net > 0 && invest > 0) Row(Modifier.padding(top = 12.dp).fillMaxWidth().height(10.dp), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                if (cash > 0) Box(Modifier.weight(cash.toFloat()).fillMaxHeight().clip(RoundedCornerShape(5.dp)).background(K.Gold))
+                Box(Modifier.weight(invest.toFloat()).fillMaxHeight().clip(RoundedCornerShape(5.dp)).background(K.SageMid))
             }
+            Spacer(Modifier.height(10.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                NetBox("Uang", K.Gold, money(cash, hidden), Modifier.weight(1f))
+                NetBox("Investasi", K.SageMid, if (Prefs.showInvest) money(d.investValue, hidden) else "disembunyikan", Modifier.weight(1f), dim = !Prefs.showInvest)
+            }
+            if (d.liabilitiesTotal < 0) Text(
+                "Termasuk utang ${money(abs(d.liabilitiesTotal), hidden)}", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = K.OnYellow,
+                modifier = Modifier.padding(top = 8.dp, start = 2.dp),
+            )
         }
 
-        // accounts
+        // money
+        Row(Modifier.fillMaxWidth().padding(top = 24.dp, start = 2.dp, end = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+            CatIcon("wallet", 26.dp)
+            Spacer(Modifier.width(8.dp))
+            Text("Uang", fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, color = K.Ink, modifier = Modifier.weight(1f))
+            Text(money(cash, hidden), fontSize = 15.sp, fontWeight = FontWeight.ExtraBold, color = K.Ink2)
+        }
         if (d.accounts.isEmpty()) {
             Spacer(Modifier.height(16.dp))
             Text(
@@ -521,8 +544,8 @@ fun AssetsScreen(d: AppData, vm: AppViewModel, nav: Nav) {
                     .pressable { nav.go(R.accountEdit()) }.padding(16.dp),
             )
         }
-        groups.forEach { g ->
-            Spacer(Modifier.height(18.dp))
+        groups.forEachIndexed { gi, g ->
+            Spacer(Modifier.height(if (gi == 0) 10.dp else 16.dp))
             CGroupLabel(g.label, right = money(g.total, hidden), rightColor = if (g.total < 0) K.Danger else K.Muted)
             Spacer(Modifier.height(8.dp))
             CList {
@@ -539,6 +562,9 @@ fun AssetsScreen(d: AppData, vm: AppViewModel, nav: Nav) {
                 }
             }
         }
+
+        // investments
+        InvestSection(d, vm, nav, hidden)
 
         // chart
         Spacer(Modifier.height(26.dp))
@@ -615,5 +641,18 @@ private fun GoalRow(g: Goal, divider: Boolean, hidden: Boolean, onClick: () -> U
             Spacer(Modifier.width(13.dp))
             Text("$pct%", fontSize = 16.sp, fontWeight = FontWeight.ExtraBold, color = K.Ink, maxLines = 1, softWrap = false)
         }
+    }
+}
+
+/** Uang / Investasi box on the net worth card. */
+@Composable
+private fun NetBox(label: String, dot: Color, value: String, modifier: Modifier, dim: Boolean = false) {
+    Column(modifier.clip(RoundedCornerShape(16.dp)).background(Color(0x99FFFFFF)).padding(horizontal = 12.dp, vertical = 8.dp).let { if (dim) it.alpha(0.5f) else it }) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(8.dp).clip(CircleShape).background(dot))
+            Spacer(Modifier.width(6.dp))
+            Text(label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = K.OnYellow)
+        }
+        Text(value, fontSize = 15.5.sp, fontWeight = FontWeight.ExtraBold, color = K.Ink, maxLines = 1)
     }
 }

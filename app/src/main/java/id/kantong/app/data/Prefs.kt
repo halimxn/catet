@@ -17,6 +17,7 @@ object Prefs {
 
     private var _ledger by mutableLongStateOf(0L)
     private var _hide by mutableStateOf(false)
+    private var _showInvest by mutableStateOf(true)
     private var _haptics by mutableStateOf(true)
     private var _colorBg by mutableStateOf(false)
     private var _colorIcon by mutableStateOf(true)
@@ -41,6 +42,7 @@ object Prefs {
         val p = ctx.getSharedPreferences("kantong_prefs", Context.MODE_PRIVATE).also { sp = it }
         _ledger = p.getLong("ledger", 0L)
         _hide = p.getBoolean("hide", false)
+        _showInvest = p.getBoolean("showInvest", true)
         _haptics = p.getBoolean("haptics", true)
         _colorBg = p.getBoolean("style_bg", false)
         _colorIcon = p.getBoolean("style_icon", true)
@@ -73,6 +75,8 @@ object Prefs {
     var ledger: Long get() = _ledger; set(v) { _ledger = v; sp?.edit()?.putLong("ledger", v)?.apply() }
     /** Hide amounts on the home screen. */
     var hideAmounts: Boolean get() = _hide; set(v) { _hide = v; put("hide", v) }
+    /** Show investments on Aset and count them in net worth. */
+    var showInvest: Boolean get() = _showInvest; set(v) { _showInvest = v; put("showInvest", v) }
     /** Vibrate on keypad taps. */
     var haptics: Boolean get() = _haptics; set(v) { _haptics = v; put("haptics", v) }
 

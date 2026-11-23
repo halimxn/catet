@@ -4,7 +4,7 @@
 
 *Catet dulu, aman kemudian.*
 
-A calm, pastel personal finance tracker for Android, built with Jetpack Compose and Room. Fully offline.
+A calm, pastel personal finance tracker for Android, built with Jetpack Compose and Room. Works offline; the internet is only used to refresh stock prices when you tap refresh.
 
 [![Platform](https://img.shields.io/badge/Platform-Android-3DDC84.svg?style=flat-square&logo=android&logoColor=white)](https://developer.android.com/)
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.0.21-7F52FF.svg?style=flat-square&logo=kotlin&logoColor=white)](https://kotlinlang.org/)
@@ -70,12 +70,20 @@ The visual style follows the "R89" reference: warm cream background, deep green 
 - Cash flow card, 6-month income vs spending bars.
 - Daily spending line with budget limit, category donut, spending heatmap.
 
+**Budget rollover**
+- Carry a budget's unspent amount into the next period, and optionally its overspending too.
+
+**Investments**
+- Stocks (IDX), gold, bonds and mutual funds, kept apart from cash on the Aset screen and hideable with one switch.
+- Every buy is recorded; the weighted average price, gain and dividends are calculated automatically.
+- Delayed IDX prices from Yahoo Finance, fetched only when you tap refresh. Other kinds use a manual price.
+
 **Assets and goals**
 - Cash and e-wallets, banks, credit cards and debts, with net worth.
 - Savings goals with progress.
 
 **Privacy and data**
-- Fully offline: no analytics, no network calls.
+- No analytics or tracking. The only network call sends a stock ticker (e.g. BBCA.JK) to fetch its price.
 - PIN lock, automatic backups through the Storage Access Framework, JSON and CSV export/import.
 
 ## Design system
@@ -134,7 +142,6 @@ adb install -r app/build/outputs/apk/release/app-release.apk
 
 ## Roadmap
 
-- [ ] Budget rollover to the next month
 - [ ] Debts and arisan tracking
 - [ ] Zakat and sedekah calculator
 - [ ] Receipt photos with on-device OCR

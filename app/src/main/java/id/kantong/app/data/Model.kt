@@ -77,6 +77,8 @@ data class Budget(
     val amount: Long,
     val start: Long = 0, // custom period only
     val end: Long = 0,
+    val rollover: Int = 0, // 1 = unspent amount of the previous period is added to this one
+    val rolloverOver: Int = 0, // 1 = overspending of the previous period is taken from this one
 ) {
     val categoryIdList: List<Long> get() = categoryIds.split(',').mapNotNull { it.trim().toLongOrNull() }
 }
@@ -102,6 +104,33 @@ data class Bill(
     val icon: String,
     val tone: String,
     val paidMonthKey: Int = 0, // yyyyMM of the last month it was paid
+)
+
+/** An investment: stock (price per share, quantity in shares), gold (per gram), bond or fund (per unit). */
+@Entity(tableName = "holdings")
+data class Holding(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val kind: String, // stock | gold | bond | fund
+    val code: String, // BBCA, ORI025, ...
+    val name: String,
+    val lastPrice: Long = 0,
+    val prevClose: Long = 0,
+    val priceTime: Long = 0,
+    val targetPrice: Long = 0,
+    val accountId: Long = 0, // account used for buys, sells and dividends (0 = none)
+)
+
+/** One buy, sell or dividend of a [Holding]. qty = shares / grams / units; price per unit (dividend: per share). */
+@Entity(tableName = "inv_txns")
+data class InvTxn(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val holdingId: Long,
+    val type: String, // buy | sell | dividend
+    val qty: Double,
+    val price: Long,
+    val fee: Long = 0,
+    val time: Long,
+    val txnId: Long = 0, // linked cash record (0 = none)
 )
 
 @Dao
@@ -150,6 +179,21 @@ interface KantongDao {
     @Delete suspend fun deleteTxn(t: Txn)
     @Delete suspend fun deleteGoal(g: Goal)
 
+    @Query("SELECT * FROM holdings ORDER BY id") fun holdings(): Flow<List<Holding>>
+    @Query("SELECT * FROM inv_txns ORDER BY time") fun invTxns(): Flow<List<InvTxn>>
+    @Query("SELECT * FROM holdings") suspend fun allHoldings(): List<Holding>
+    @Query("SELECT * FROM inv_txns") suspend fun allInvTxns(): List<InvTxn>
+    @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun upsertHolding(h: Holding): Long
+    @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun upsertInvTxn(t: InvTxn): Long
+    @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun insertHoldings(h: List<Holding>)
+    @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun insertInvTxns(t: List<InvTxn>)
+    @Delete suspend fun deleteHolding(h: Holding)
+    @Delete suspend fun deleteInvTxn(t: InvTxn)
+    @Query("DELETE FROM inv_txns WHERE holdingId = :id") suspend fun deleteInvTxnsOf(id: Long)
+    @Query("DELETE FROM transactions WHERE id = :id") suspend fun deleteTxnById(id: Long)
+    @Query("DELETE FROM holdings") suspend fun clearHoldings()
+    @Query("DELETE FROM inv_txns") suspend fun clearInvTxns()
+
     @Query("DELETE FROM accounts") suspend fun clearAccounts()
     @Query("DELETE FROM categories") suspend fun clearCategories()
     @Query("DELETE FROM transactions") suspend fun clearTxns()
@@ -157,12 +201,22 @@ interface KantongDao {
     @Query("DELETE FROM bills") suspend fun clearBills()
 }
 
-@Database(entities = [Account::class, Category::class, Txn::class, Goal::class, Bill::class, Ledger::class, Budget::class], version = 2, exportSchema = false)
+@Database(entities = [Account::class, Category::class, Txn::class, Goal::class, Bill::class, Ledger::class, Budget::class, Holding::class, InvTxn::class], version = 3, exportSchema = false)
 abstract class KantongDb : RoomDatabase() {
     abstract fun dao(): KantongDao
 }
 
 /** v1 -> v2: ledgers, budgets, subcategories, reimburse/bookmark/fee on records, account icons. Keeps every existing row. */
+/** v2 -> v3: budget rollover flags, investments (holdings + their buys/sells/dividends). Keeps every existing row. */
+val MIGRATION_2_3 = object : Migration(2, 3) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE budgets ADD COLUMN rollover INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE budgets ADD COLUMN rolloverOver INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("CREATE TABLE IF NOT EXISTS `holdings` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `kind` TEXT NOT NULL, `code` TEXT NOT NULL, `name` TEXT NOT NULL, `lastPrice` INTEGER NOT NULL, `prevClose` INTEGER NOT NULL, `priceTime` INTEGER NOT NULL, `targetPrice` INTEGER NOT NULL, `accountId` INTEGER NOT NULL)")
+        db.execSQL("CREATE TABLE IF NOT EXISTS `inv_txns` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `holdingId` INTEGER NOT NULL, `type` TEXT NOT NULL, `qty` REAL NOT NULL, `price` INTEGER NOT NULL, `fee` INTEGER NOT NULL, `time` INTEGER NOT NULL, `txnId` INTEGER NOT NULL)")
+    }
+}
+
 val MIGRATION_1_2 = object : Migration(1, 2) {
     override fun migrate(db: SupportSQLiteDatabase) {
         db.execSQL("ALTER TABLE accounts ADD COLUMN icon TEXT NOT NULL DEFAULT ''")

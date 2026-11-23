@@ -19,7 +19,7 @@ import org.json.JSONObject
 object Db {
     @Volatile private var db: KantongDb? = null
     fun get(ctx: Context): KantongDb = db ?: synchronized(this) {
-        db ?: Room.databaseBuilder(ctx.applicationContext, KantongDb::class.java, "kantong.db").addMigrations(MIGRATION_1_2).build().also { db = it }
+        db ?: Room.databaseBuilder(ctx.applicationContext, KantongDb::class.java, "kantong.db").addMigrations(MIGRATION_1_2, MIGRATION_2_3).build().also { db = it }
     }
 }
 
@@ -37,7 +37,15 @@ data class AppData(
     val ledgers: List<Ledger> = emptyList(),
     val budgets: List<Budget> = emptyList(),
     val allTxns: List<Txn> = txns,
+    val holdings: List<Holding> = emptyList(),
+    val invTxns: List<InvTxn> = emptyList(),
 ) {
+    // ----- investments -----
+    fun holding(id: Long): Holding? = holdings.firstOrNull { it.id == id }
+    fun position(h: Holding): Position = Position.of(h, invTxns.filter { it.holdingId == h.id })
+    val positions: List<Position> get() = holdings.map { position(it) }.filter { it.qty > 0.0001 || it.h.kind != "stock" || invTxns.none { t -> t.holdingId == it.h.id } }
+    val investValue: Long get() = positions.sumOf { it.value }
+
     /** Same snapshot with records limited to one ledger (0 = all ledgers). */
     fun forLedger(ledgerId: Long): AppData = if (ledgerId == 0L) this else copy(txns = allTxns.filter { it.ledgerId == ledgerId })
 
@@ -53,8 +61,19 @@ data class AppData(
     // ----- budgets -----
     /** Start (inclusive) and end (exclusive) of the budget's current period. */
     fun periodOf(b: Budget): Pair<Long, Long> = periodRange(b.period, b.start, b.end)
-    fun spentFor(b: Budget): Long {
-        val (from, to) = periodOf(b)
+    fun spentFor(b: Budget): Long = spentIn(b, periodOf(b))
+    /** Leftover of the previous period carried into this one (0 when rollover is off or for custom periods). */
+    fun carryFor(b: Budget): Long {
+        if (b.rollover != 1 || b.period == "custom") return 0
+        val (from, _) = periodOf(b)
+        val prev = periodRange(b.period, b.start, b.end, now = from - 1)
+        val left = b.amount - spentIn(b, prev)
+        return if (left >= 0 || b.rolloverOver == 1) left else 0
+    }
+    /** Amount available this period: limit plus carried leftover. */
+    fun limitOf(b: Budget): Long = b.amount + carryFor(b)
+    private fun spentIn(b: Budget, range: Pair<Long, Long>): Long {
+        val (from, to) = range
         val ids = b.categoryIdList.toSet()
         return allTxns.filter { it.kind == "out" && it.time in from until to && (rootOf(it.categoryId)?.id in ids || it.categoryId in ids) }.sumOf { it.amount }
     }
@@ -73,7 +92,7 @@ data class AppData(
     val spentMonth: Long get() = monthTxns.filter { it.kind == "out" }.sumOf { it.amount }
     val incomeMonth: Long get() = monthTxns.filter { it.kind == "in" }.sumOf { it.amount }
     val spentToday: Long get() = txns.filter { it.kind == "out" && it.time >= startOfDay() }.sumOf { it.amount }
-    val budgetTotal: Long get() = budgets.filter { it.period == "month" }.sumOf { it.amount }
+    val budgetTotal: Long get() = budgets.filter { it.period == "month" }.sumOf { limitOf(it) }
     val leftToSpend: Long get() = (budgetTotal - spentMonth)
     val safePerDay: Long get() {
         val daysLeft = (daysInMonth() - dayOfMonth() + 1).coerceAtLeast(1)
@@ -115,8 +134,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     val data: StateFlow<AppData> = combine(
         combine(dao.accounts(), dao.categories(), dao.transactions(), dao.goals(), dao.bills()) { a, c, t, g, b -> AppData(a, c, t, g, b, loaded = true) },
-        dao.ledgers(), dao.budgets(),
-    ) { d, l, b -> d.copy(ledgers = l, budgets = b) }
+        dao.ledgers(), dao.budgets(), dao.holdings(), dao.invTxns(),
+    ) { d, l, b, h, it2 -> d.copy(ledgers = l, budgets = b, holdings = h, invTxns = it2) }
         .stateIn(viewModelScope, SharingStarted.Eagerly, AppData())
 
     /** One-shot filter handed to Riwayat when another screen opens it for a category. */
@@ -152,6 +171,43 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun deleteLedger(l: Ledger, moveTo: Long) = viewModelScope.launch(Dispatchers.IO) { dao.moveLedger(l.id, moveTo); dao.deleteLedger(l) }
     fun saveBudget(b: Budget) = viewModelScope.launch(Dispatchers.IO) { dao.upsertBudget(b) }
     fun deleteBudget(b: Budget) = viewModelScope.launch(Dispatchers.IO) { dao.deleteBudget(b) }
+
+    // ----- investments -----
+    fun saveHolding(h: Holding) = viewModelScope.launch(Dispatchers.IO) { dao.upsertHolding(h) }
+    /** Deletes an investment with its history and the cash records it created. */
+    fun deleteHolding(h: Holding, txns: List<InvTxn>) = viewModelScope.launch(Dispatchers.IO) {
+        txns.filter { it.txnId > 0 }.forEach { dao.deleteTxnById(it.txnId) }
+        dao.deleteInvTxnsOf(h.id); dao.deleteHolding(h)
+    }
+    /**
+     * Saves a buy / sell / dividend. With an account, money moves too: a buy is a transfer out of the account,
+     * a sell or dividend a transfer into it, so reports and budgets don't count them as spending or income.
+     */
+    fun addInvTxn(h: Holding, t: InvTxn, accountId: Long, newHolding: Boolean = false) = viewModelScope.launch(Dispatchers.IO) {
+        val hid = if (newHolding) dao.upsertHolding(h.copy(accountId = accountId)) else h.id.also { if (accountId != h.accountId) dao.upsertHolding(h.copy(accountId = accountId)) }
+        val gross = (t.qty * t.price).toLong()
+        val label = when (t.type) { "buy" -> "Beli"; "sell" -> "Jual"; else -> "Dividen" } + " " + h.code
+        val txnId = if (accountId <= 0) 0L else dao.upsertTxn(
+            when (t.type) {
+                "buy" -> Txn(amount = gross, kind = "transfer", categoryId = null, accountId = accountId, toAccountId = null, merchant = label, time = t.time, fee = t.fee)
+                "sell" -> Txn(amount = gross - t.fee, kind = "transfer", categoryId = null, accountId = 0, toAccountId = accountId, merchant = label, time = t.time)
+                else -> Txn(amount = gross, kind = "transfer", categoryId = null, accountId = 0, toAccountId = accountId, merchant = label, time = t.time)
+            },
+        )
+        dao.upsertInvTxn(t.copy(holdingId = hid, txnId = txnId))
+    }
+    fun deleteInvTxn(t: InvTxn) = viewModelScope.launch(Dispatchers.IO) { if (t.txnId > 0) dao.deleteTxnById(t.txnId); dao.deleteInvTxn(t) }
+
+    /** Fetches the latest prices of all stocks (Yahoo Finance, IDX). Returns how many were updated. */
+    suspend fun refreshPrices(holdings: List<Holding>): Int = withContext(Dispatchers.IO) {
+        var n = 0
+        holdings.filter { it.kind == "stock" }.forEach { h ->
+            runCatching { Prices.quote(h.code) }.getOrNull()?.let { q ->
+                dao.upsertHolding(h.copy(lastPrice = q.price, prevClose = q.prevClose, priceTime = q.time)); n++
+            }
+        }
+        n
+    }
     /** Deletes a category and its subcategories. Records keep their amount but show as "Tanpa kategori". */
     fun deleteCategory(c: Category) = viewModelScope.launch(Dispatchers.IO) { dao.deleteSubcategories(c.id); dao.deleteCategory(c) }
     /** Only accounts without records can be deleted (balances must stay explainable). */
@@ -181,7 +237,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         root.put("categories", JSONArray(dao.allCategories().map { JSONObject().put("id", it.id).put("name", it.name).put("icon", it.icon).put("tone", it.tone).put("kind", it.kind).put("budget", it.budget).put("sortOrder", it.sortOrder).put("parentId", it.parentId) }))
         root.put("transactions", JSONArray(dao.allTransactions().map { JSONObject().put("id", it.id).put("amount", it.amount).put("kind", it.kind).put("categoryId", it.categoryId ?: JSONObject.NULL).put("accountId", it.accountId).put("toAccountId", it.toAccountId ?: JSONObject.NULL).put("merchant", it.merchant).put("note", it.note).put("time", it.time).put("ledgerId", it.ledgerId).put("reimburse", it.reimburse).put("starred", it.starred).put("fee", it.fee) }))
         root.put("ledgers", JSONArray(dao.allLedgers().map { JSONObject().put("id", it.id).put("name", it.name).put("icon", it.icon).put("tone", it.tone).put("archived", it.archived).put("sortOrder", it.sortOrder) }))
-        root.put("budgets", JSONArray(dao.allBudgets().map { JSONObject().put("id", it.id).put("name", it.name).put("period", it.period).put("categoryIds", it.categoryIds).put("amount", it.amount).put("start", it.start).put("end", it.end) }))
+        root.put("budgets", JSONArray(dao.allBudgets().map { JSONObject().put("id", it.id).put("name", it.name).put("period", it.period).put("categoryIds", it.categoryIds).put("amount", it.amount).put("start", it.start).put("end", it.end).put("rollover", it.rollover).put("rolloverOver", it.rolloverOver) }))
+        root.put("holdings", JSONArray(dao.allHoldings().map { JSONObject().put("id", it.id).put("kind", it.kind).put("code", it.code).put("name", it.name).put("lastPrice", it.lastPrice).put("prevClose", it.prevClose).put("priceTime", it.priceTime).put("targetPrice", it.targetPrice).put("accountId", it.accountId) }))
+        root.put("invTxns", JSONArray(dao.allInvTxns().map { JSONObject().put("id", it.id).put("holdingId", it.holdingId).put("type", it.type).put("qty", it.qty).put("price", it.price).put("fee", it.fee).put("time", it.time).put("txnId", it.txnId) }))
         root.put("goals", JSONArray(dao.allGoals().map { JSONObject().put("id", it.id).put("name", it.name).put("icon", it.icon).put("tone", it.tone).put("target", it.target).put("saved", it.saved).put("deadline", it.deadline ?: JSONObject.NULL) }))
         root.put("bills", JSONArray(dao.allBills().map { JSONObject().put("id", it.id).put("name", it.name).put("amount", it.amount).put("dueDay", it.dueDay).put("categoryId", it.categoryId ?: JSONObject.NULL).put("icon", it.icon).put("tone", it.tone).put("paidMonthKey", it.paidMonthKey) }))
         getApplication<Application>().contentResolver.openOutputStream(uri, "wt")!!.use { it.write(root.toString(2).toByteArray()) }
@@ -199,12 +257,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val cats = arr("categories").map { Category(it.getLong("id"), it.getString("name"), it.getString("icon"), it.getString("tone"), it.getString("kind"), it.getLong("budget"), it.optInt("sortOrder"), it.optLong("parentId")) }
         val txns = arr("transactions").map { Txn(it.getLong("id"), it.getLong("amount"), it.getString("kind"), it.longOrNull("categoryId"), it.getLong("accountId"), it.longOrNull("toAccountId"), it.optString("merchant"), it.optString("note"), it.getLong("time"), it.optLong("ledgerId", 1), it.optInt("reimburse"), it.optBoolean("starred"), it.optLong("fee")) }
         val ledgers = arrOrEmpty("ledgers").map { Ledger(it.getLong("id"), it.getString("name"), it.getString("icon"), it.getString("tone"), it.optBoolean("archived"), it.optInt("sortOrder")) }.ifEmpty { Seed.ledgers() }
-        val budgets = arrOrEmpty("budgets").map { Budget(it.getLong("id"), it.getString("name"), it.getString("period"), it.getString("categoryIds"), it.getLong("amount"), it.optLong("start"), it.optLong("end")) }
+        val budgets = arrOrEmpty("budgets").map { Budget(it.getLong("id"), it.getString("name"), it.getString("period"), it.getString("categoryIds"), it.getLong("amount"), it.optLong("start"), it.optLong("end"), it.optInt("rollover"), it.optInt("rolloverOver")) }
             .ifEmpty { cats.filter { it.kind == "out" && it.budget > 0 }.map { Budget(name = it.name, period = "month", categoryIds = it.id.toString(), amount = it.budget) } }
         val goals = arr("goals").map { Goal(it.getLong("id"), it.getString("name"), it.getString("icon"), it.getString("tone"), it.getLong("target"), it.getLong("saved"), it.longOrNull("deadline")) }
         val bills = arr("bills").map { Bill(it.getLong("id"), it.getString("name"), it.getLong("amount"), it.getInt("dueDay"), it.longOrNull("categoryId"), it.getString("icon"), it.getString("tone"), it.optInt("paidMonthKey")) }
         dao.clearTxns(); dao.clearBills(); dao.clearGoals(); dao.clearCategories(); dao.clearAccounts(); dao.clearLedgers(); dao.clearBudgets()
         dao.insertAccounts(accounts); dao.insertCategories(cats); dao.insertTxns(txns); dao.insertGoals(goals); dao.insertBills(bills)
         dao.insertLedgers(ledgers); dao.insertBudgets(budgets)
+        val holdings = arrOrEmpty("holdings").map { Holding(it.getLong("id"), it.getString("kind"), it.getString("code"), it.getString("name"), it.optLong("lastPrice"), it.optLong("prevClose"), it.optLong("priceTime"), it.optLong("targetPrice"), it.optLong("accountId")) }
+        val invTxns = arrOrEmpty("invTxns").map { InvTxn(it.getLong("id"), it.getLong("holdingId"), it.getString("type"), it.getDouble("qty"), it.getLong("price"), it.optLong("fee"), it.getLong("time"), it.optLong("txnId")) }
+        dao.clearHoldings(); dao.clearInvTxns(); dao.insertHoldings(holdings); dao.insertInvTxns(invTxns)
     }
 }

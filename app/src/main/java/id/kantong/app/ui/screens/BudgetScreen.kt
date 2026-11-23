@@ -85,6 +85,7 @@ import id.kantong.app.ui.components.PillMenu
 import id.kantong.app.ui.components.PillOption
 import id.kantong.app.ui.components.ProgressBar
 import id.kantong.app.ui.components.RedButton
+import id.kantong.app.ui.components.MeowToggle
 import id.kantong.app.ui.components.SheetHeader
 import id.kantong.app.ui.components.SmallChip
 import id.kantong.app.ui.components.anchor
@@ -125,7 +126,7 @@ fun BudgetSheet(d: AppData, vm: AppViewModel, onDismiss: () -> Unit) {
                             )
                         }
                     } else {
-                        val total = d.budgets.sumOf { it.amount }
+                        val total = d.budgets.sumOf { d.limitOf(it) }
                         val spent = d.budgets.sumOf { d.spentFor(it) }
                         Spacer(Modifier.height(16.dp))
                         BudgetSummary(total, spent)
@@ -181,8 +182,10 @@ private fun BudgetSummary(total: Long, spent: Long) {
 private fun BudgetBlock(d: AppData, b: Budget, onClick: () -> Unit) {
     val cats = b.categoryIdList.mapNotNull { d.category(it) }
     val spent = d.spentFor(b)
-    val pct = budPct(spent, b.amount)
-    val over = spent > b.amount
+    val carry = d.carryFor(b)
+    val limit = b.amount + carry
+    val pct = budPct(spent, limit)
+    val over = spent > limit
     val warn = !over && pct >= 75
     val barColor = when { over -> Color(0xFFD9776A); warn -> K.Gold; else -> K.Green }
     Column(
@@ -201,14 +204,19 @@ private fun BudgetBlock(d: AppData, b: Budget, onClick: () -> Unit) {
                     if (over || warn) {
                         Spacer(Modifier.width(8.dp))
                         SmallChip(
-                            if (over) "Lebih Rp${(spent - b.amount).short()}" else "Hampir habis",
+                            if (over) "Lebih Rp${(spent - limit).short()}" else "Hampir habis",
                             if (over) K.Pink else K.Yellow, if (over) K.Danger else K.Ink,
                         )
                     }
                 }
                 Text(
-                    "Rp${spent.short()} dari Rp${b.amount.short()}" + if (b.period != "month") " · ${periodName(b.period)}" else "",
+                    "Rp${spent.short()} dari Rp${limit.short()}" + if (b.period != "month") " · ${periodName(b.period)}" else "",
                     fontSize = 13.sp, fontWeight = FontWeight.Medium, color = K.Muted, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(top = 2.dp),
+                )
+                if (carry != 0L) Text(
+                    (if (carry > 0) "↻ Sisa lalu +Rp" else "↻ Kelebihan lalu −Rp") + kotlin.math.abs(carry).short(),
+                    fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (carry > 0) K.ChartIn else K.Danger, maxLines = 1,
                     modifier = Modifier.padding(top = 2.dp),
                 )
             }
@@ -216,7 +224,7 @@ private fun BudgetBlock(d: AppData, b: Budget, onClick: () -> Unit) {
             Text("$pct%", fontSize = 15.5.sp, fontWeight = FontWeight.ExtraBold, color = if (over) K.Danger else K.Ink, maxLines = 1)
         }
         Spacer(Modifier.height(10.dp))
-        ProgressBar(if (b.amount > 0) spent.toFloat() / b.amount else 0f, barColor, track = Color(0xFFEFE6D1), height = 8.dp)
+        ProgressBar(if (limit > 0) spent.toFloat() / limit else 0f, barColor, track = Color(0xFFEFE6D1), height = 8.dp)
     }
 }
 
@@ -229,6 +237,8 @@ private fun BudgetForm(d: AppData, vm: AppViewModel, editing: Budget?, onClose: 
     var ids by remember { mutableStateOf(editing?.categoryIdList ?: emptyList()) }
     var digits by remember { mutableStateOf(editing?.amount?.takeIf { it > 0 }?.toString() ?: "") }
     var name by remember { mutableStateOf(editing?.name ?: "") }
+    var rollover by remember { mutableStateOf(editing?.rollover == 1) }
+    var rolloverOver by remember { mutableStateOf(editing?.rolloverOver == 1) }
     var periodMenu by remember { mutableStateOf(false) }
     var catMenu by remember { mutableStateOf(false) }
     var pickStart by remember { mutableStateOf(false) }
@@ -319,6 +329,29 @@ private fun BudgetForm(d: AppData, vm: AppViewModel, editing: Budget?, onClose: 
                     }
                 }
 
+                // Rollover
+                if (period != "custom") Column(
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(K.Card).padding(horizontal = 14.dp, vertical = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Bawa sisa ke periode berikutnya", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = K.Ink)
+                            Text("Sisa yang tidak terpakai ditambahkan ke periode berikutnya", fontSize = 12.5.sp, color = K.Muted)
+                        }
+                        Spacer(Modifier.width(10.dp))
+                        MeowToggle(rollover) { rollover = it; if (!it) rolloverOver = false }
+                    }
+                    if (rollover) Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Bawa juga kelebihan", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = K.Ink)
+                            Text("Kalau lewat, periode berikutnya berkurang", fontSize = 12.5.sp, color = K.Muted)
+                        }
+                        Spacer(Modifier.width(10.dp))
+                        MeowToggle(rolloverOver) { rolloverOver = it }
+                    }
+                }
+
                 // Nama Anggaran Field
                 Column {
                     Text("Nama Anggaran (opsional)", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = K.Muted, modifier = Modifier.padding(start = 4.dp, bottom = 4.dp))
@@ -354,6 +387,8 @@ private fun BudgetForm(d: AppData, vm: AppViewModel, editing: Budget?, onClose: 
                                 amount = amount,
                                 start = if (p == "custom") start else 0L,
                                 end = if (p == "custom") end else 0L,
+                                rollover = if (rollover && p != "custom") 1 else 0,
+                                rolloverOver = if (rollover && rolloverOver && p != "custom") 1 else 0,
                             ),
                         )
                         onClose()

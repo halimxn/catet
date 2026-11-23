@@ -74,7 +74,11 @@ fun amountText(t: Txn): Pair<String, Color> = when (t.kind) {
 
 /** Title (category, or "Transfer") and remark (merchant/note, or "BCA → GoPay"). */
 fun recordTitle(d: AppData, t: Txn): Pair<String, String> = if (t.kind == "transfer") {
-    "Transfer" to "${d.account(t.accountId)?.name ?: "-"} → ${d.account(t.toAccountId)?.name ?: "-"}"
+    t.merchant.ifBlank { "Transfer" } to when {
+        d.account(t.accountId) == null -> "Investasi → ${d.account(t.toAccountId)?.name ?: "-"}"
+        d.account(t.toAccountId) == null -> "${d.account(t.accountId)?.name ?: "-"} → Investasi"
+        else -> "${d.account(t.accountId)?.name} → ${d.account(t.toAccountId)?.name}"
+    }
 } else {
     (d.category(t.categoryId)?.name ?: "Tanpa kategori") to t.merchant.ifBlank { t.note }
 }

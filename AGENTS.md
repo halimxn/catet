@@ -228,12 +228,17 @@ Baca file ini **sebelum mengubah apa pun**. Semua aturan di sini sudah disetujui
 - Tombol "Atur" di baris kategori pada layar Tambah terhubung dengan benar.
 - Onboarding 4 langkah (`OnboardingScreen.kt`, `Prefs.onboarded`): sambutan, nama buku kas, saldo akun, anggaran bulanan. Data disimpan hanya saat Selesai; "Lewati" tidak mengubah data.
 - Tab bawah berupa kapsul mengambang putih (64dp, radius 32, bayangan lembut); tab aktif = pil kuning di belakang ikon + label hijau ExtraBold.
+- Rollover anggaran (`Budget.rollover`, `rolloverOver`; `AppData.carryFor`/`limitOf`): sisa periode lalu ditambahkan, opsional kelebihan dikurangkan. `budgetTotal` memakai `limitOf`.
+- Investasi (`data/Invest.kt`, `ui/screens/InvestScreen.kt`, tabel `holdings` + `inv_txns`, DB v3 `MIGRATION_2_3`):
+  - Aset dibagi **Uang** (kartu krem) dan **Investasi** (kartu sage + daftar krem, sakelar `Prefs.showInvest`).
+  - Harga rata-rata tertimbang dihitung dari riwayat beli (`Position.of`); jual tidak mengubah rata-rata.
+  - Beli = transfer keluar dari akun (toAccountId null); jual/dividen = transfer masuk (accountId 0), supaya tidak dihitung pengeluaran/pemasukan.
+  - Harga saham BEI dari Yahoo Finance (`Prices`), hanya saat tombol ↻ diketuk atau detail dibuka; emas/obligasi/reksa dana harga manual.
 
 **Belum dibuat** (rencana berikutnya, urut prioritas):
-1. **Pengulangan anggaran (rollover):** sisa anggaran pindah ke bulan berikutnya, ditandai chip di `BudgetSheet`.
-2. **Utang-piutang dan arisan:** tab atau kelompok baru di Aset, dengan warna `Danger` untuk utang.
-3. **Zakat & sedekah:** kalkulator sederhana dari aset, dibuka dari "Kelola".
-4. **Foto struk** di transaksi, ditampilkan sebagai thumbnail di lembar detail. Setelah itu OCR struk on-device (ML Kit).
+1. **Utang-piutang dan arisan:** tab atau kelompok baru di Aset, dengan warna `Danger` untuk utang.
+2. **Zakat & sedekah:** kalkulator sederhana dari aset, dibuka dari "Kelola".
+3. **Foto struk** di transaksi, ditampilkan sebagai thumbnail di lembar detail. Setelah itu OCR struk on-device (ML Kit).
 6. **Widget layar utama:** sisa uang dan jatah harian, memakai gaya kartu kuning.
 7. **Ekspor PDF laporan bulanan.**
 8. **Deteksi notifikasi transaksi** on-device (izin notification listener).

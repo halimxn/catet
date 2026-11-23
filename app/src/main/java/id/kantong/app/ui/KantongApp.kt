@@ -1,5 +1,6 @@
 package id.kantong.app.ui
 
+import id.kantong.app.ui.screens.HoldingScreen
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
@@ -97,6 +98,7 @@ object R {
     fun categoryAdd(kind: String, editId: Long = 0, parentId: Long = 0) = "category_add/$kind/$editId/$parentId"
     fun ledger(id: Long) = "ledger/$id"
     fun account(id: Long) = "account/$id"
+    fun holding(id: Long) = "holding/$id"
     fun accountEdit(id: Long = 0) = "account_edit/$id"
     fun types(kind: String) = "types/$kind"
 }
@@ -160,6 +162,9 @@ fun KantongApp() {
             composable(R.LEDGERS) { Screen { LedgersScreen(data, vm, nav) } }
             composable("ledger/{id}", listOf(navArgument("id") { type = NavType.LongType })) { e ->
                 Screen { LedgerDetailScreen(data, vm, nav, e.arguments?.getLong("id") ?: 0L) }
+            }
+            composable("holding/{id}", listOf(navArgument("id") { type = NavType.LongType })) { e ->
+                Screen { HoldingScreen(data, vm, nav, e.arguments?.getLong("id") ?: 0L) }
             }
             composable("account/{id}", listOf(navArgument("id") { type = NavType.LongType })) { e ->
                 Screen { AccountDetailScreen(data, vm, nav, e.arguments?.getLong("id") ?: 0L) }
