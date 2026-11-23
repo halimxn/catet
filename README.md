@@ -78,6 +78,11 @@ The visual style follows the "R89" reference: warm cream background, deep green 
 - Every buy is recorded; the weighted average price, gain and dividends are calculated automatically.
 - Delayed IDX prices from Yahoo Finance, fetched only when you tap refresh. Other kinds use a manual price.
 
+**Debts and splitting bills**
+- Track money lent (piutang) and borrowed (utang) per person, with optional monthly installments and overdue status.
+- Send a polite reminder through WhatsApp with one tap (you press send).
+- Patungan: split any spending record between friends; your share stays as spending, theirs become receivables.
+
 **Assets and goals**
 - Cash and e-wallets, banks, credit cards and debts, with net worth.
 - Savings goals with progress.
@@ -142,7 +147,6 @@ adb install -r app/build/outputs/apk/release/app-release.apk
 
 ## Roadmap
 
-- [ ] Debts and arisan tracking
 - [ ] Zakat and sedekah calculator
 - [ ] Receipt photos with on-device OCR
 - [ ] Home screen widget

@@ -95,6 +95,7 @@ import id.kantong.app.ui.theme.Tone
 @Composable
 fun HomeScreen(d: AppData, vm: AppViewModel, nav: Nav) {
     var open by remember { mutableStateOf<Txn?>(null) }
+    var splitTx by remember { mutableStateOf<Txn?>(null) }
     var budget by remember { mutableStateOf(false) }
     var period by remember { mutableStateOf(false) }
     var ledgerMenu by remember { mutableStateOf(false) }
@@ -277,9 +278,9 @@ fun HomeScreen(d: AppData, vm: AppViewModel, nav: Nav) {
         CSection("Riwayat", Modifier.padding(top = 26.dp, bottom = 4.dp), action = "Lihat semua") { nav.go(R.SEARCH) }
         val recent = monthTx.take(40)
         if (recent.isEmpty()) {
-            Text(
-                "Belum ada catatan di ${fmt(from, "MMMM")}. Ketuk Pengeluaran atau Pemasukan di atas untuk mulai mencatat.",
-                fontSize = 15.sp, fontWeight = FontWeight.Medium, color = K.Muted, lineHeight = 21.sp, modifier = Modifier.padding(vertical = 16.dp, horizontal = 2.dp),
+            id.kantong.app.ui.components.CEmpty(
+                "Belum ada catatan di ${fmt(from, "MMMM")}. Ketuk Pengeluaran atau Pemasukan di atas untuk mulai mencatat.", "pencil",
+                Modifier.padding(top = 6.dp).clip(RoundedCornerShape(24.dp)).background(K.Card),
             )
         } else {
             RecordTimeline(d, recent, onOpen = { open = it })
@@ -303,8 +304,10 @@ fun HomeScreen(d: AppData, vm: AppViewModel, nav: Nav) {
         RecordDetailCard(
             d, cur, onDismiss = { open = null }, onEdit = { open = null; nav.go(R.add(cur.id)) },
             onDelete = { vm.deleteTxn(cur); open = null }, onStar = { vm.toggleStar(cur) }, onReimburse = { vm.setReimburse(cur, it) },
+            onSplit = { open = null; splitTx = cur },
         )
     }
+    splitTx?.let { s -> SplitSheet(d, vm, s) { splitTx = null } }
 }
 
 @Composable

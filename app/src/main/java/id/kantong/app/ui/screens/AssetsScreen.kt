@@ -483,7 +483,7 @@ fun AssetsScreen(d: AppData, vm: AppViewModel, nav: Nav) {
     val hidden = Prefs.hideAmounts
     val cash = d.totalBalance
     val invest = if (Prefs.showInvest) d.investValue else 0L
-    val net = cash + invest
+    val net = cash + invest + d.receivable - d.payable
     val groups = remember(d) { accountGroups(d) }
 
     Column(
@@ -561,6 +561,24 @@ fun AssetsScreen(d: AppData, vm: AppViewModel, nav: Nav) {
                     }
                 }
             }
+        }
+
+        // debts summary
+        Row(
+            Modifier.padding(top = 12.dp).fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(K.Card).pressable { nav.go(R.DEBTS) }.padding(horizontal = 16.dp, vertical = 13.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            CatIcon("card", 30.dp)
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text("Utang & piutang", fontSize = 15.sp, fontWeight = FontWeight.ExtraBold, color = K.Ink)
+                val overdue = d.debtStates.count { it.overdueDays > 0 }
+                Text(
+                    if (d.receivable == 0L && d.payable == 0L) "Catat pinjaman atau patungan" else "Piutang ${money(d.receivable, hidden)} · utang ${money(d.payable, hidden)}" + if (overdue > 0) " · $overdue lewat" else "",
+                    fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (overdue > 0) K.Danger else K.Muted, maxLines = 1,
+                )
+            }
+            Text("›", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = K.Muted)
         }
 
         // investments

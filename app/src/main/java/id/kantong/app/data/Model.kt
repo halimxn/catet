@@ -118,6 +118,7 @@ data class Holding(
     val priceTime: Long = 0,
     val targetPrice: Long = 0,
     val accountId: Long = 0, // account used for buys, sells and dividends (0 = none)
+    val coupon: Double = 0.0, // bonds: yearly coupon in percent
 )
 
 /** One buy, sell or dividend of a [Holding]. qty = shares / grams / units; price per unit (dividend: per share). */
@@ -131,6 +132,33 @@ data class InvTxn(
     val fee: Long = 0,
     val time: Long,
     val txnId: Long = 0, // linked cash record (0 = none)
+)
+
+/** Money lent to someone (direction "lend" = piutang) or borrowed from them ("borrow" = utang). */
+@Entity(tableName = "debts")
+data class Debt(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val person: String,
+    val direction: String, // lend | borrow
+    val amount: Long,
+    val time: Long,
+    val dueDate: Long = 0, // 0 = no due date (ignored when installments > 0)
+    val note: String = "",
+    val installments: Int = 0, // 0 = no schedule; N = equal monthly installments
+    val firstDue: Long = 0, // date of the first installment
+    val settled: Int = 0, // 1 = marked paid off by hand
+    val txnId: Long = 0, // cash record of the loan itself (0 = none)
+    val sourceTxnId: Long = 0, // spending record it was split from (patungan)
+)
+
+/** One repayment of a [Debt]. */
+@Entity(tableName = "debt_pays")
+data class DebtPay(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val debtId: Long,
+    val amount: Long,
+    val time: Long,
+    val txnId: Long = 0,
 )
 
 @Dao
@@ -194,6 +222,20 @@ interface KantongDao {
     @Query("DELETE FROM holdings") suspend fun clearHoldings()
     @Query("DELETE FROM inv_txns") suspend fun clearInvTxns()
 
+    @Query("SELECT * FROM debts ORDER BY time DESC") fun debts(): Flow<List<Debt>>
+    @Query("SELECT * FROM debt_pays ORDER BY time") fun debtPays(): Flow<List<DebtPay>>
+    @Query("SELECT * FROM debts") suspend fun allDebts(): List<Debt>
+    @Query("SELECT * FROM debt_pays") suspend fun allDebtPays(): List<DebtPay>
+    @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun upsertDebt(d: Debt): Long
+    @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun upsertDebtPay(p: DebtPay): Long
+    @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun insertDebts(d: List<Debt>)
+    @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun insertDebtPays(p: List<DebtPay>)
+    @Delete suspend fun deleteDebt(d: Debt)
+    @Delete suspend fun deleteDebtPay(p: DebtPay)
+    @Query("DELETE FROM debt_pays WHERE debtId = :id") suspend fun deleteDebtPaysOf(id: Long)
+    @Query("DELETE FROM debts") suspend fun clearDebts()
+    @Query("DELETE FROM debt_pays") suspend fun clearDebtPays()
+
     @Query("DELETE FROM accounts") suspend fun clearAccounts()
     @Query("DELETE FROM categories") suspend fun clearCategories()
     @Query("DELETE FROM transactions") suspend fun clearTxns()
@@ -201,13 +243,28 @@ interface KantongDao {
     @Query("DELETE FROM bills") suspend fun clearBills()
 }
 
-@Database(entities = [Account::class, Category::class, Txn::class, Goal::class, Bill::class, Ledger::class, Budget::class, Holding::class, InvTxn::class], version = 3, exportSchema = false)
+@Database(entities = [Account::class, Category::class, Txn::class, Goal::class, Bill::class, Ledger::class, Budget::class, Holding::class, InvTxn::class, Debt::class, DebtPay::class], version = 5, exportSchema = false)
 abstract class KantongDb : RoomDatabase() {
     abstract fun dao(): KantongDao
 }
 
 /** v1 -> v2: ledgers, budgets, subcategories, reimburse/bookmark/fee on records, account icons. Keeps every existing row. */
 /** v2 -> v3: budget rollover flags, investments (holdings + their buys/sells/dividends). Keeps every existing row. */
+/** v3 -> v4: debts and their repayments. Keeps every existing row. */
+/** v4 -> v5: yearly coupon for bonds. */
+val MIGRATION_4_5 = object : Migration(4, 5) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE holdings ADD COLUMN coupon REAL NOT NULL DEFAULT 0")
+    }
+}
+
+val MIGRATION_3_4 = object : Migration(3, 4) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("CREATE TABLE IF NOT EXISTS `debts` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `person` TEXT NOT NULL, `direction` TEXT NOT NULL, `amount` INTEGER NOT NULL, `time` INTEGER NOT NULL, `dueDate` INTEGER NOT NULL, `note` TEXT NOT NULL, `installments` INTEGER NOT NULL, `firstDue` INTEGER NOT NULL, `settled` INTEGER NOT NULL, `txnId` INTEGER NOT NULL, `sourceTxnId` INTEGER NOT NULL)")
+        db.execSQL("CREATE TABLE IF NOT EXISTS `debt_pays` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `debtId` INTEGER NOT NULL, `amount` INTEGER NOT NULL, `time` INTEGER NOT NULL, `txnId` INTEGER NOT NULL)")
+    }
+}
+
 val MIGRATION_2_3 = object : Migration(2, 3) {
     override fun migrate(db: SupportSQLiteDatabase) {
         db.execSQL("ALTER TABLE budgets ADD COLUMN rollover INTEGER NOT NULL DEFAULT 0")

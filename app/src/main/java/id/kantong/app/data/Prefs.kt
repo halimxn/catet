@@ -18,6 +18,8 @@ object Prefs {
     private var _ledger by mutableLongStateOf(0L)
     private var _hide by mutableStateOf(false)
     private var _showInvest by mutableStateOf(true)
+    private var _broker by mutableStateOf("ajaib")
+    private var _ihsg by mutableStateOf("")
     private var _haptics by mutableStateOf(true)
     private var _colorBg by mutableStateOf(false)
     private var _colorIcon by mutableStateOf(true)
@@ -43,6 +45,8 @@ object Prefs {
         _ledger = p.getLong("ledger", 0L)
         _hide = p.getBoolean("hide", false)
         _showInvest = p.getBoolean("showInvest", true)
+        _broker = p.getString("broker", "ajaib") ?: "ajaib"
+        _ihsg = p.getString("ihsg", "") ?: ""
         _haptics = p.getBoolean("haptics", true)
         _colorBg = p.getBoolean("style_bg", false)
         _colorIcon = p.getBoolean("style_icon", true)
@@ -77,6 +81,10 @@ object Prefs {
     var hideAmounts: Boolean get() = _hide; set(v) { _hide = v; put("hide", v) }
     /** Show investments on Aset and count them in net worth. */
     var showInvest: Boolean get() = _showInvest; set(v) { _showInvest = v; put("showInvest", v) }
+    /** Stock broker whose fee preset fills buy / sell fees. */
+    var broker: String get() = _broker; set(v) { _broker = v; put("broker", v) }
+    /** Last IHSG quote: "price|prevClose|time". */
+    var ihsg: String get() = _ihsg; set(v) { _ihsg = v; put("ihsg", v) }
     /** Vibrate on keypad taps. */
     var haptics: Boolean get() = _haptics; set(v) { _haptics = v; put("haptics", v) }
 

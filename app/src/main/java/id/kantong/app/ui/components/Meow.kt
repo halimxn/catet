@@ -1,5 +1,7 @@
 package id.kantong.app.ui.components
 
+import androidx.compose.ui.graphics.graphicsLayer
+
 import androidx.compose.material.icons.rounded.Schedule
 
 import androidx.compose.ui.draw.drawBehind
@@ -698,92 +700,74 @@ fun PeriodCard(mode: String, anchor: Long, onDismiss: () -> Unit, onConfirm: (St
     var year by remember { mutableIntStateOf(start.get(Calendar.YEAR)) }
     var month by remember { mutableIntStateOf(start.get(Calendar.MONTH)) }
     var week by remember { mutableIntStateOf((start.get(Calendar.DAY_OF_MONTH) - 1) / 7) }
+    var page by remember { mutableIntStateOf(maxOf(start.get(Calendar.YEAR), Calendar.getInstance().get(Calendar.YEAR))) } // last year shown in the year grid
+    val now = Calendar.getInstance()
+    val nowYear = now.get(Calendar.YEAR); val nowMonth = now.get(Calendar.MONTH)
+    val full = listOf("Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember")
+    val days = Calendar.getInstance().apply { clear(); set(year, month, 1) }.getActualMaximum(Calendar.DAY_OF_MONTH)
+    val weeks = (days + 6) / 7
+    val w = week.coerceAtMost(weeks - 1)
+
+    @Composable
+    fun Cell(label: String, on: Boolean, dim: Boolean, modifier: Modifier, onClick: () -> Unit) {
+        Box(
+            modifier.height(40.dp).let { mm ->
+                if (dim && !on) mm.drawBehind {
+                    drawRoundRect(K.YellowLine, cornerRadius = androidx.compose.ui.geometry.CornerRadius(13.dp.toPx()), style = androidx.compose.ui.graphics.drawscope.Stroke(1.4.dp.toPx(), pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 4.dp.toPx()))))
+                } else mm.clip(RoundedCornerShape(13.dp)).background(if (on) K.Green else K.Tile)
+            }.clip(RoundedCornerShape(13.dp)).pressable(onClick),
+            contentAlignment = Alignment.Center,
+        ) { Text(label, fontSize = 13.5.sp, fontWeight = FontWeight.ExtraBold, color = if (on) Color.White else if (dim) K.Muted.copy(alpha = 0.7f) else K.Ink2, maxLines = 1) }
+    }
+
     Overlay(onDismiss) {
-        FloatingCard {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf("week" to "Mingguan", "month" to "Bulanan", "year" to "Tahunan").forEach { (k, label) ->
-                    val on = m == k
-                    Box(
-                        Modifier.weight(1f).height(42.dp).clip(RoundedCornerShape(14.dp))
-                            .background(if (on) K.Green else K.Field)
-                            .border(if (on) 1.5.dp else 1.dp, if (on) K.Green else K.Line, RoundedCornerShape(14.dp))
-                            .pressable { m = k },
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(
-                            label,
-                            fontSize = 14.5.sp,
-                            fontWeight = if (on) FontWeight.Bold else FontWeight.SemiBold,
-                            color = if (on) Color.White else K.Ink,
-                        )
-                    }
-                }
+        CatetSheet {
+            SheetHeader("Periode laporan", onDismiss, size = 21)
+            MeowSegmented(
+                listOf("Minggu", "Bulan", "Tahun"), listOf("week", "month", "year").indexOf(m),
+                { m = listOf("week", "month", "year")[it] }, Modifier.padding(top = 14.dp).fillMaxWidth(), fill = true, fontSize = 14.sp,
+            )
+            Row(Modifier.fillMaxWidth().padding(top = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+                CRoundButton(Icons.Rounded.ChevronLeft, if (m == "year") "Sebelumnya" else "Tahun sebelumnya", { if (m == "year") page -= 6 else year-- }, size = 36.dp)
+                Text(
+                    if (m == "year") "${page - 5} – $page" else "$year", fontSize = 16.sp, fontWeight = FontWeight.ExtraBold, color = K.Ink,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center, modifier = Modifier.weight(1f),
+                )
+                CRoundButton(Icons.Rounded.ChevronRight, if (m == "year") "Berikutnya" else "Tahun berikutnya", { if (m == "year") page += 6 else year++ }, size = 36.dp)
             }
-            Spacer(Modifier.height(12.dp))
-            Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically,
+            Column(
+                Modifier.fillMaxWidth().padding(top = 12.dp).clip(RoundedCornerShape(22.dp)).background(K.Card).padding(10.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                SquareButton(Icons.Rounded.ChevronLeft, "Tahun sebelumnya", { year-- }, size = 36.dp)
-                Spacer(Modifier.width(20.dp))
-                Text("$year", fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, color = K.Ink)
-                Spacer(Modifier.width(20.dp))
-                SquareButton(Icons.Rounded.ChevronRight, "Tahun berikutnya", { year++ }, size = 36.dp)
-            }
-            Spacer(Modifier.height(10.dp))
-            if (m != "year") {
-                MONTHS.chunked(4).forEachIndexed { r, row ->
-                    Row(Modifier.padding(bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        row.forEachIndexed { c, name ->
-                            val idx = r * 4 + c
-                            val on = idx == month
-                            Box(
-                                Modifier.weight(1f).height(38.dp).clip(RoundedCornerShape(12.dp))
-                                    .background(if (on) K.Green else K.Field)
-                                    .border(if (on) 1.5.dp else 1.dp, if (on) K.Green else K.Line, RoundedCornerShape(12.dp))
-                                    .pressable { month = idx },
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Text(
-                                    name,
-                                    fontSize = 14.5.sp,
-                                    fontWeight = if (on) FontWeight.ExtraBold else FontWeight.SemiBold,
-                                    color = if (on) Color.White else K.Ink,
-                                )
-                            }
+                if (m == "year") {
+                    (page - 5..page).chunked(3).forEach { row ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            row.forEach { y -> Cell("$y", y == year, y > nowYear, Modifier.weight(1f)) { year = y } }
+                        }
+                    }
+                } else {
+                    (0..11).chunked(6).forEach { row ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            row.forEach { i -> Cell(full[i].take(3), i == month, year > nowYear || (year == nowYear && i > nowMonth), Modifier.weight(1f)) { month = i } }
                         }
                     }
                 }
             }
             if (m == "week") {
-                val days = Calendar.getInstance().apply { set(year, month, 1) }.getActualMaximum(Calendar.DAY_OF_MONTH)
-                val weeks = (days + 6) / 7
-                Row(Modifier.padding(bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    (0 until weeks).forEach { i ->
-                        val on = i == week.coerceAtMost(weeks - 1)
-                        Box(
-                            Modifier.weight(1f).height(36.dp).clip(RoundedCornerShape(11.dp))
-                                .background(if (on) K.Green else K.Field)
-                                .border(if (on) 1.5.dp else 1.dp, if (on) K.Green else K.Line, RoundedCornerShape(11.dp))
-                                .pressable { week = i },
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text(
-                                "${i * 7 + 1}–${minOf(days, i * 7 + 7)}",
-                                fontSize = 13.sp,
-                                fontWeight = if (on) FontWeight.Bold else FontWeight.Medium,
-                                color = if (on) Color.White else K.Ink,
-                            )
-                        }
-                    }
+                Text("Minggu ke", fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, color = K.Ink2, modifier = Modifier.padding(start = 4.dp, top = 12.dp, bottom = 6.dp))
+                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(K.Card).padding(10.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    (0 until weeks).forEach { i -> Cell("${i * 7 + 1}–${minOf(days, i * 7 + 7)}", i == w, false, Modifier.weight(1f)) { week = i } }
                 }
             }
-            Spacer(Modifier.height(12.dp))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            val label = when (m) {
+                "year" -> "Lihat $year"
+                "week" -> "Lihat ${w * 7 + 1}–${minOf(days, w * 7 + 7)} ${full[month].take(3)}"
+                else -> "Lihat ${full[month]} $year"
+            }
+            Row(Modifier.fillMaxWidth().padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 CreamButton("Batal", Modifier.weight(1f), onClick = onDismiss)
-                RedButton("Pilih", Modifier.weight(1f)) {
-                    val day = if (m == "week") week * 7 + 1 else 1
+                RedButton(label, Modifier.weight(1.6f)) {
+                    val day = if (m == "week") w * 7 + 1 else 1
                     val chosen = Calendar.getInstance().apply {
                         clear()
                         set(year, if (m == "year") 0 else month, day, 12, 0, 0)

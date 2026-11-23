@@ -53,6 +53,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import id.kantong.app.data.AppData
 import id.kantong.app.data.AppViewModel
+import id.kantong.app.data.Brokers
 import id.kantong.app.data.Holding
 import id.kantong.app.data.InvKind
 import id.kantong.app.data.InvTxn
@@ -64,6 +65,8 @@ import id.kantong.app.data.grouped
 import id.kantong.app.ui.Nav
 import id.kantong.app.ui.R
 import id.kantong.app.ui.components.CRoundButton
+import id.kantong.app.ui.components.SelOpt
+import id.kantong.app.ui.components.CPicker
 import id.kantong.app.ui.components.CalendarCard
 import id.kantong.app.ui.components.CatIcon
 import id.kantong.app.ui.components.CatetSheet
@@ -116,7 +119,7 @@ fun InvestSection(d: AppData, vm: AppViewModel, nav: Nav, hidden: Boolean) {
     val scope = rememberCoroutineScope()
     val show = Prefs.showInvest
     val positions = d.positions
-    val stocks = d.holdings.filter { InvKind.live(it.kind) }
+    val stocks = d.holdings.filter { InvKind.live(it.kind, it.code) }
 
     Row(Modifier.fillMaxWidth().padding(top = 26.dp, start = 2.dp, end = 2.dp), verticalAlignment = Alignment.CenterVertically) {
         CatIcon("invest", 26.dp)
@@ -130,6 +133,7 @@ fun InvestSection(d: AppData, vm: AppViewModel, nav: Nav, hidden: Boolean) {
                     busy = true
                     scope.launch {
                         val n = vm.refreshPrices(d.holdings)
+                        withContext(Dispatchers.IO) { runCatching { Prices.quote("^JKSE", raw = true) }.getOrNull() }?.let { q -> Prefs.ihsg = "${q.price}|${q.prevClose}|${q.time}" }
                         busy = false
                         note = if (n == 0) "Gagal memperbarui harga. Cek koneksi internet." else null
                         if (note != null) { delay(4000); note = null }
@@ -167,6 +171,19 @@ fun InvestSection(d: AppData, vm: AppViewModel, nav: Nav, hidden: Boolean) {
         val value = positions.sumOf { it.value }
         val cost = positions.sumOf { it.cost }
         val day = positions.sumOf { it.dayGain }
+        Prefs.ihsg.split("|").takeIf { it.size == 3 }?.let { (pv, pc, tm) ->
+            val pr = pv.toLongOrNull() ?: 0L; val prev = pc.toLongOrNull() ?: 0L
+            if (pr > 0) {
+                val ch = if (prev > 0) (pr - prev) * 100.0 / prev else 0.0
+                Row(Modifier.padding(bottom = 8.dp).fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(K.Card).padding(horizontal = 14.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text("IHSG", fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, color = K.Ink2)
+                    Spacer(Modifier.width(8.dp))
+                    Text(pr.grouped(), fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, color = K.Ink, modifier = Modifier.weight(1f))
+                    Text(pct(ch) + " hari ini", fontSize = 12.5.sp, fontWeight = FontWeight.ExtraBold, color = gainColor(ch))
+                    tm.toLongOrNull()?.takeIf { it > 0 }?.let { Text(" · " + fmt(it, "HH.mm"), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = K.Muted) }
+                }
+            }
+        }
         Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(28.dp)).background(K.SageCard).padding(18.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
@@ -199,7 +216,12 @@ fun InvestSection(d: AppData, vm: AppViewModel, nav: Nav, hidden: Boolean) {
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
                         Text(p.h.name.ifBlank { p.h.code }, fontSize = 15.sp, fontWeight = FontWeight.ExtraBold, color = K.Ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(InvKind.qtyText(p.h.kind, p.qty), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = K.Muted)
+                        Row {
+                            Text(InvKind.qtyText(p.h.kind, p.qty), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = K.Muted)
+                            if (p.h.prevClose > 0 && p.h.lastPrice > 0 && p.h.prevClose != p.h.lastPrice) Text(
+                                " · ${InvKind.priceText(p.h.kind, p.h.lastPrice.toDouble())} " + pct(p.dayPct), fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, color = gainColor(p.dayPct), maxLines = 1,
+                            )
+                        }
                     }
                     Column(horizontalAlignment = Alignment.End) {
                         Text(if (hidden) "•••••" else p.value.grouped(), fontSize = 15.sp, fontWeight = FontWeight.ExtraBold, color = K.Ink, maxLines = 1)
@@ -239,9 +261,10 @@ fun HoldingScreen(d: AppData, vm: AppViewModel, nav: Nav, id: Long) {
     var removeTx by remember { mutableStateOf<InvTxn?>(null) }
     var removeAll by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
-    val live = InvKind.live(h.kind)
+    val live = InvKind.live(h.kind, h.code)
+    val chart = h.kind == "stock"
 
-    if (live && Prefs.showInvest) LaunchedEffect(range, h.code) {
+    if (chart && Prefs.showInvest) LaunchedEffect(range, h.code) {
         closes = withContext(Dispatchers.IO) { runCatching { Prices.closes(h.code, range) }.getOrDefault(emptyList()) }
     }
 
@@ -261,10 +284,10 @@ fun HoldingScreen(d: AppData, vm: AppViewModel, nav: Nav, id: Long) {
         Column(Modifier.padding(top = 16.dp).fillMaxWidth().clip(RoundedCornerShape(28.dp)).background(K.SageCard).padding(18.dp)) {
             Row(verticalAlignment = Alignment.Bottom) {
                 Column(Modifier.weight(1f)) {
-                    Text(if (live) "Harga sekarang" else "Harga (diisi manual)", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = K.OnSage)
-                    Text(h.lastPrice.grouped(), fontSize = 30.sp, fontWeight = FontWeight.ExtraBold, color = K.Green)
+                    Text(if (h.kind == "gold" && live) "Harga buyback / gram · Galeri24" else if (h.kind == "bond" && live) "Harga wajar per Rp1 jt · IBPA" else if (h.kind == "bond") "Nilai nominal (tidak diperdagangkan)" else if (live) "Harga sekarang" else "Harga (diisi manual)", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = K.OnSage)
+                    Text(InvKind.priceText(h.kind, h.lastPrice.toDouble()), fontSize = 30.sp, fontWeight = FontWeight.ExtraBold, color = K.Green)
                 }
-                if (live && h.prevClose > 0) Text(
+                if (live && h.prevClose > 0 && h.prevClose != h.lastPrice) Text(
                     (if (h.lastPrice >= h.prevClose) "+" else "−") + abs(h.lastPrice - h.prevClose).grouped() + " · " + pct(p.dayPct).drop(1),
                     fontSize = 12.5.sp, fontWeight = FontWeight.ExtraBold, color = gainColor(p.dayPct),
                     modifier = Modifier.clip(RoundedCornerShape(50)).background(K.Tile).padding(horizontal = 10.dp, vertical = 4.dp),
@@ -273,7 +296,7 @@ fun HoldingScreen(d: AppData, vm: AppViewModel, nav: Nav, id: Long) {
                     modifier = Modifier.clip(RoundedCornerShape(50)).background(K.Tile).pressable { edit = "price" }.padding(horizontal = 12.dp, vertical = 5.dp),
                 )
             }
-            if (live) {
+            if (chart) {
                 PriceChart(closes, p.avg, h.targetPrice.toDouble(), Modifier.padding(top = 10.dp).fillMaxWidth().height(80.dp))
                 Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                     if (p.avg > 0) Text("- - rata-rata ${Math.round(p.avg).grouped()}", fontSize = 11.5.sp, fontWeight = FontWeight.Bold, color = K.OnSage)
@@ -291,15 +314,29 @@ fun HoldingScreen(d: AppData, vm: AppViewModel, nav: Nav, id: Long) {
         }
 
         Row(Modifier.padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Stat("Jumlah · rata-rata", "${InvKind.qtyText(h.kind, p.qty)} · ${Math.round(p.avg).grouped()}", K.Yellow, K.OnYellow, Modifier.weight(1f))
+            Stat("Jumlah · rata-rata", "${InvKind.qtyText(h.kind, p.qty)} · ${InvKind.priceText(h.kind, p.avg)}", K.Yellow, K.OnYellow, Modifier.weight(1f))
             Stat("Untung", if (hidden) "•••••" else (if (p.gain >= 0) "+" else "−") + abs(p.gain).grouped(), K.Yellow, K.OnYellow, Modifier.weight(1f), gainColor(p.gain.toDouble()))
         }
         Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Stat("Modal", if (hidden) "•••••" else p.cost.grouped(), K.Card, K.Muted, Modifier.weight(1f))
             if (h.kind == "stock") Stat("Dividen diterima", if (hidden) "•••••" else "Rp" + p.dividends.grouped(), K.Card, K.Muted, Modifier.weight(1f))
-            else Stat("Nilai", if (hidden) "•••••" else p.value.grouped(), K.Card, K.Muted, Modifier.weight(1f))
+            else if (h.kind == "bond" && h.coupon > 0) {
+                // SBN retail coupons are taxed 10% final; paid monthly.
+                val monthly = (p.cost * h.coupon / 100.0 / 12.0 * 0.9).toLong()
+                Stat("Kupon bersih / bulan", if (hidden) "•••••" else "±Rp" + monthly.grouped(), K.Card, K.Muted, Modifier.weight(1f), K.ChartIn)
+            } else Stat("Nilai", if (hidden) "•••••" else p.value.grouped(), K.Card, K.Muted, Modifier.weight(1f))
         }
-        Row(
+        if (h.kind == "bond" && h.coupon > 0 && p.history.isNotEmpty()) {
+            val first = p.history.minOf { it.time }
+            val months = ((System.currentTimeMillis() - first) / (30.44 * 86_400_000L)).toInt().coerceAtLeast(0)
+            val monthly = (p.cost * h.coupon / 100.0 / 12.0 * 0.9).toLong()
+            Text(
+                "Kupon ${String.format(java.util.Locale("in", "ID"), "%.2f", h.coupon)}%/tahun · perkiraan diterima sejauh ini ±Rp${(monthly * months).grouped()} ($months bulan)",
+                fontSize = 12.5.sp, fontWeight = FontWeight.SemiBold, color = K.OnSage,
+                modifier = Modifier.padding(top = 8.dp).fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(K.SageCard).padding(12.dp),
+            )
+        }
+        if (h.kind == "stock") Row(
             Modifier.padding(top = 8.dp).fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(K.Card).pressable { edit = "target" }.padding(horizontal = 12.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -324,7 +361,7 @@ fun HoldingScreen(d: AppData, vm: AppViewModel, nav: Nav, id: Long) {
                     Spacer(Modifier.width(10.dp))
                     Column(Modifier.weight(1f)) {
                         Text(
-                            if (t.type == "dividend") "Rp${t.price.grouped()} × ${t.qty.toLong().grouped()} lembar" else "${InvKind.qtyText(h.kind, t.qty)} × ${t.price.grouped()}",
+                            if (t.type == "dividend") "Rp${t.price.grouped()} × ${t.qty.toLong().grouped()} lembar" else "${InvKind.qtyText(h.kind, t.qty)} × ${InvKind.priceText(h.kind, t.price.toDouble())}",
                             fontSize = 13.5.sp, fontWeight = FontWeight.ExtraBold, color = K.Ink, maxLines = 1,
                         )
                         Text(fmt(t.time, "d MMM yyyy") + (d.account(d.allTxns.firstOrNull { it.id == t.txnId }?.let { it.toAccountId ?: it.accountId })?.let { " · ${it.name}" } ?: ""), fontSize = 11.5.sp, fontWeight = FontWeight.SemiBold, color = K.Muted)
@@ -409,7 +446,7 @@ private fun PriceChart(closes: List<Double>, avg: Double, target: Double, modifi
 
 /** Number input box: small label, big grouped value; allows a decimal comma when [decimal]. */
 @Composable
-private fun NumField(label: String, text: String, onChange: (String) -> Unit, modifier: Modifier = Modifier, decimal: Boolean = false, suffix: String = "") {
+internal fun NumField(label: String, text: String, onChange: (String) -> Unit, modifier: Modifier = Modifier, decimal: Boolean = false, suffix: String = "") {
     Column(modifier.clip(RoundedCornerShape(16.dp)).background(K.Tile).padding(horizontal = 12.dp, vertical = 8.dp)) {
         Text(label, fontSize = 11.5.sp, fontWeight = FontWeight.SemiBold, color = K.OnYellow, maxLines = 1)
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -431,7 +468,7 @@ private fun NumField(label: String, text: String, onChange: (String) -> Unit, mo
     }
 }
 
-private fun String.num(): Double = replace(".", "").replace(',', '.').toDoubleOrNull() ?: 0.0
+internal fun String.num(): Double = replace(".", "").replace(',', '.').toDoubleOrNull() ?: 0.0
 
 /**
  * Buy / sell / dividend sheet, or a new investment ([mode] = "new"). Shows the effect live:
@@ -444,9 +481,22 @@ fun InvTxnSheet(d: AppData, vm: AppViewModel, h: Holding?, p: Position?, mode: S
     var name by remember { mutableStateOf(h?.name ?: "") }
     var quote by remember { mutableStateOf<Prices.Quote?>(null) }
     var checking by remember { mutableStateOf(false) }
-    var qty by remember { mutableStateOf(if (mode == "sell" && p != null) (p.qty / InvKind.step(h!!.kind)).let { if (it % 1.0 == 0.0) it.toLong().toString() else it.toString().replace('.', ',') } else "") }
-    var price by remember { mutableStateOf(if (mode != "dividend" && (h?.lastPrice ?: 0) > 0) h!!.lastPrice.toString() else "") }
+    var qty by remember {
+        mutableStateOf(
+            if (mode == "sell" && p != null) {
+                if (h!!.kind == "bond") Math.round(p.qty * 1_000_000).toString()
+                else (p.qty / InvKind.step(h.kind)).let { if (it % 1.0 == 0.0) it.toLong().toString() else it.toString().replace('.', ',') }
+            } else "",
+        )
+    }
+    fun pctStr(v: Double) = String.format(Locale("in", "ID"), "%.2f", v)
+    var price by remember { mutableStateOf(if (mode != "dividend" && (h?.lastPrice ?: 0) > 0) (if (h!!.kind == "bond") pctStr(h.lastPrice / 10_000.0) else h.lastPrice.toString()) else "") }
     var fee by remember { mutableStateOf("") }
+    var feeEdited by remember { mutableStateOf(false) }
+    var broker by remember { mutableStateOf(Prefs.broker) }
+    var gold by remember { mutableStateOf<Map<String, Prices.Gold>?>(null) }
+    var bondNote by remember { mutableStateOf<String?>(null) }
+    var coupon by remember { mutableStateOf(h?.coupon?.takeIf { it > 0 }?.toString()?.replace('.', ',') ?: "") }
     var time by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var pickDate by remember { mutableStateOf(false) }
     val accounts = d.accounts.filter { d.balanceOf(it) >= 0 || it.type != "credit" }
@@ -456,9 +506,12 @@ fun InvTxnSheet(d: AppData, vm: AppViewModel, h: Holding?, p: Position?, mode: S
 
     val k = h?.kind ?: kind
     val step = InvKind.step(k)
-    val q = qty.num() * step
-    val pr = price.num().toLong()
-    val fe = fee.num().toLong()
+    // Bonds: nominal in rupiah (stored per Rp1 juta) and price in % of par (stored per Rp1 juta).
+    val q = if (k == "bond") qty.num() / 1_000_000.0 else qty.num() * step
+    val pr = if (k == "bond") Math.round(price.num() * 10_000) else price.num().toLong()
+    // Broker preset fills the fee for stocks until the user types their own.
+    val presetFee = if (k == "stock" && mode in listOf("new", "buy", "sell")) Math.round(q * pr * (if (mode == "sell") Brokers.of(broker).sell else Brokers.of(broker).buy) / 100.0) else 0L
+    val fe = if (feeEdited) fee.num().toLong() else presetFee
     val title = when (mode) { "new" -> "Tambah investasi"; "buy" -> "Beli lagi ${h?.code}"; "sell" -> "Jual ${h?.code}"; else -> "Dividen ${h?.code}" }
 
     Overlay(onDismiss) {
@@ -473,35 +526,76 @@ fun InvTxnSheet(d: AppData, vm: AppViewModel, h: Holding?, p: Position?, mode: S
                     InvKind.all.forEach { (key, label) ->
                         Text(
                             label, fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, color = if (kind == key) Color.White else K.Ink2,
-                            modifier = Modifier.clip(RoundedCornerShape(50)).background(if (kind == key) K.Green else K.Field).pressable { kind = key; quote = null }.padding(horizontal = 14.dp, vertical = 7.dp),
+                            modifier = Modifier.clip(RoundedCornerShape(50)).background(if (kind == key) K.Green else K.Field).pressable { if (kind != key) { kind = key; quote = null; code = ""; name = ""; price = ""; fee = ""; feeEdited = false; coupon = ""; err = null } }.padding(horizontal = 14.dp, vertical = 7.dp),
                         )
                     }
                 }
                 Column(Modifier.padding(top = 12.dp).fillMaxWidth().clip(RoundedCornerShape(26.dp)).background(K.Yellow).padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    if (mode == "new") {
+                    if (mode == "new" && kind == "gold") {
+                        CPicker(
+                            "Penjual · harga dari Galeri24",
+                            Prices.GOLD_VENDORS.keys.map { key -> SelOpt(key, Prices.goldName(key).removePrefix("Emas ") + if (key == "GALERI24") " · Pegadaian" else "", gold?.get(key)?.let { "jual Rp${it.sell.grouped()} · buyback Rp${it.buyback.grouped()} /g" } ?: "harga online") } +
+                                SelOpt("OTHER", "Lainnya", "harga diisi manual"),
+                            if (code in Prices.GOLD_VENDORS) code else if (code.isNotEmpty()) "OTHER" else "", title = "Pilih penjual emas",
+                        ) { key ->
+                            err = null
+                            if (key == "OTHER") { code = "EMAS"; name = "Emas" } else {
+                                code = key; name = Prices.goldName(key)
+                                checking = true
+                                scope.launch {
+                                    val t = gold ?: withContext(Dispatchers.IO) { runCatching { Prices.gold() }.getOrNull() }
+                                    gold = t; checking = false
+                                    t?.get(key)?.let { g -> price = g.sell.toString() } ?: run { err = "Harga emas belum bisa diambil. Isi harga manual." }
+                                }
+                            }
+                        }
+                        if (checking) Text("Mengambil harga…", fontSize = 12.5.sp, fontWeight = FontWeight.Bold, color = K.OnYellow, modifier = Modifier.padding(start = 4.dp))
+                        if (code.isNotEmpty() && code !in Prices.GOLD_VENDORS) Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(K.Tile).padding(horizontal = 12.dp, vertical = 8.dp)) {
+                            Text("Nama", fontSize = 11.5.sp, fontWeight = FontWeight.SemiBold, color = K.OnYellow)
+                            BasicTextField(
+                                value = name, onValueChange = { name = it.take(40) }, singleLine = true,
+                                textStyle = TextStyle(fontSize = 17.sp, fontWeight = FontWeight.ExtraBold, color = K.Ink), cursorBrush = SolidColor(K.Green), modifier = Modifier.fillMaxWidth(),
+                            )
+                        }
+                    } else if (mode == "new") {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Column(Modifier.weight(1f).clip(RoundedCornerShape(16.dp)).background(K.Tile).padding(horizontal = 12.dp, vertical = 8.dp)) {
-                                Text(if (kind == "stock") "Kode saham" else "Kode / nama singkat", fontSize = 11.5.sp, fontWeight = FontWeight.SemiBold, color = K.OnYellow)
+                                Text(if (kind == "stock") "Kode saham" else if (kind == "bond") "Kode seri, mis. ORI025T6" else "Kode / nama singkat", fontSize = 11.5.sp, fontWeight = FontWeight.SemiBold, color = K.OnYellow)
                                 BasicTextField(
                                     value = code, onValueChange = { code = it.uppercase().filter { c -> c.isLetterOrDigit() }.take(10); quote = null }, singleLine = true,
                                     textStyle = TextStyle(fontSize = 19.sp, fontWeight = FontWeight.ExtraBold, color = K.Ink), cursorBrush = SolidColor(K.Green), modifier = Modifier.fillMaxWidth(),
                                 )
                             }
-                            if (kind == "stock") Box(
+                            if (kind == "stock" || kind == "bond") Box(
                                 Modifier.height(54.dp).clip(RoundedCornerShape(16.dp)).background(K.Green).pressable {
                                     if (code.isBlank() || checking) return@pressable
                                     checking = true; err = null
                                     scope.launch {
-                                        quote = withContext(Dispatchers.IO) { runCatching { Prices.quote(code) }.getOrNull() }
-                                        checking = false
-                                        quote?.let { qt -> if (name.isBlank()) name = qt.name; if (price.isBlank()) price = qt.price.toString() } ?: run { err = "Kode tidak ditemukan atau tidak ada internet" }
+                                        if (kind == "bond") {
+                                            if (!Prices.bondTradable(code)) {
+                                                checking = false; bondNote = "$code tidak diperdagangkan, nilai tetap nominal (100%)."
+                                                if (price.isBlank()) price = "100"; if (name.isBlank()) name = code
+                                                return@launch
+                                            }
+                                            val found = withContext(Dispatchers.IO) { runCatching { Prices.findBond(Prices.bonds(), code) }.getOrNull() }
+                                            checking = false
+                                            found?.let { (c, b) ->
+                                                code = c; name = c; price = pctStr(b.pricePct); coupon = String.format(Locale("in", "ID"), "%.2f", b.coupon)
+                                                bondNote = "✓ Harga ${String.format(Locale("in", "ID"), "%.2f", b.pricePct)}% · kupon ${String.format(Locale("in", "ID"), "%.2f", b.coupon)}%/tahun"
+                                            } ?: run { err = "Seri tidak ada di daftar harga IBPA. Isi harga dan kupon manual." }
+                                        } else {
+                                            quote = withContext(Dispatchers.IO) { runCatching { Prices.quote(code) }.getOrNull() }
+                                            checking = false
+                                            quote?.let { qt -> if (name.isBlank()) name = qt.name; if (price.isBlank()) price = qt.price.toString() } ?: run { err = "Kode tidak ditemukan atau tidak ada internet" }
+                                        }
                                     }
                                 }.padding(horizontal = 16.dp),
                                 contentAlignment = Alignment.Center,
                             ) { Text(if (checking) "…" else "Cek", fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, color = Color.White) }
                         }
+                        bondNote?.let { Text(it, fontSize = 12.5.sp, fontWeight = FontWeight.Bold, color = K.ChartIn, modifier = Modifier.padding(start = 4.dp)) }
                         quote?.let { Text("✓ ${it.name} · ${it.price.grouped()}", fontSize = 12.5.sp, fontWeight = FontWeight.Bold, color = K.ChartIn, modifier = Modifier.padding(start = 4.dp)) }
-                        if (kind != "stock") Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(K.Tile).padding(horizontal = 12.dp, vertical = 8.dp)) {
+                        if (kind != "stock" && kind != "bond") Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(K.Tile).padding(horizontal = 12.dp, vertical = 8.dp)) {
                             Text("Nama", fontSize = 11.5.sp, fontWeight = FontWeight.SemiBold, color = K.OnYellow)
                             BasicTextField(
                                 value = name, onValueChange = { name = it.take(40) }, singleLine = true,
@@ -509,17 +603,28 @@ fun InvTxnSheet(d: AppData, vm: AppViewModel, h: Holding?, p: Position?, mode: S
                             )
                         }
                     }
+                    if (mode == "new" && kind == "bond") NumField("Kupon per tahun (%)", coupon, { coupon = it }, Modifier.fillMaxWidth(), decimal = true, suffix = "%")
                     if (mode == "dividend") {
-                        NumField("Dividen per lembar", price, { price = it }, Modifier.fillMaxWidth(), suffix = "× ${(p?.qty ?: 0.0).toLong().grouped()} lembar")
+                        NumField("Dividen per lembar (sebelum pajak)", price, { price = it }, Modifier.fillMaxWidth(), suffix = "× ${(p?.qty ?: 0.0).toLong().grouped()} lembar")
                     } else {
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            NumField("Jumlah ${InvKind.unit(k)}", qty, { qty = it }, Modifier.weight(1f), decimal = k != "stock")
-                            NumField(if (k == "gold") "Harga / gram" else if (k == "stock") "Harga / lembar" else "Harga / unit", price, { price = it }, Modifier.weight(1.3f))
+                            NumField(if (k == "bond") "Nominal (Rp)" else "Jumlah ${InvKind.unit(k)}", qty, { qty = it }, Modifier.weight(1.3f), decimal = k != "stock" && k != "bond")
+                            NumField(if (k == "gold") "Harga / gram" else if (k == "stock") "Harga / lembar" else if (k == "bond") "Harga (% nominal)" else "Harga / unit", price, { price = it }, Modifier.weight(1f), decimal = k == "bond")
                         }
-                        NumField("Biaya broker (opsional)", fee, { fee = it }, Modifier.fillMaxWidth())
+                        if (k == "stock") CPicker(
+                            "Broker", Brokers.all.map { b -> SelOpt(b.key, b.name, if (b.buy == 0.0) "tanpa biaya" else "beli ${pctTxt(b.buy)} · jual ${pctTxt(b.sell)}") },
+                            broker, title = "Pilih broker",
+                        ) { key -> broker = key; Prefs.broker = key; feeEdited = false }
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            NumField(
+                                if (k == "stock") (if (feeEdited) "Biaya · diisi manual" else "Biaya · otomatis ${pctTxt(if (mode == "sell") Brokers.of(broker).sell else Brokers.of(broker).buy)}") else "Biaya (opsional)",
+                                if (feeEdited) fee else if (presetFee > 0) presetFee.toString() else "", { fee = it; feeEdited = true }, Modifier.weight(1f),
+                            )
+                            if (k == "stock" && feeEdited) Pill("Otomatis") { feeEdited = false; fee = "" }
+                        }
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        if (mode != "dividend" && (h?.lastPrice ?: quote?.price ?: 0L) > 0) Pill("Pakai harga sekarang") { price = (h?.lastPrice?.takeIf { it > 0 } ?: quote?.price ?: 0L).toString() }
+                        if (mode != "dividend" && (h?.lastPrice ?: quote?.price ?: 0L) > 0) Pill("Pakai harga sekarang") { val v = h?.lastPrice?.takeIf { it > 0 } ?: quote?.price ?: 0L; price = if (k == "bond") pctStr(v / 10_000.0) else v.toString() }
                         Pill(fmt(time, "d MMM yyyy") + " ▾") { pickDate = true }
                     }
                 }
@@ -532,8 +637,8 @@ fun InvTxnSheet(d: AppData, vm: AppViewModel, h: Holding?, p: Position?, mode: S
                             val oq = old?.qty ?: 0.0; val oc = old?.cost?.toDouble() ?: 0.0
                             val nq = oq + q
                             val navg = if (nq > 0) (oc + q * pr + fe) / nq else 0.0
-                            if (old != null && oq > 0) PreviewRow("Rata-rata", "${Math.round(old.avg).grouped()} → ${Math.round(navg).grouped()}", true)
-                            else PreviewRow("Rata-rata beli", Math.round(navg).grouped(), true)
+                            if (old != null && oq > 0) PreviewRow("Rata-rata", "${InvKind.priceText(k, old.avg)} → ${InvKind.priceText(k, navg)}", true)
+                            else PreviewRow("Rata-rata beli", InvKind.priceText(k, navg), true)
                             PreviewRow("Total", if (old != null && oq > 0) "${InvKind.qtyText(k, oq)} → ${InvKind.qtyText(k, nq)}" else InvKind.qtyText(k, nq))
                             PreviewRow("Uang keluar", "Rp" + (q * pr + fe).toLong().grouped())
                         }
@@ -541,19 +646,21 @@ fun InvTxnSheet(d: AppData, vm: AppViewModel, h: Holding?, p: Position?, mode: S
                             val gain = (q * pr - fe - (old?.avg ?: 0.0) * q).toLong()
                             PreviewRow("Untung/rugi jual", (if (gain >= 0) "+Rp" else "−Rp") + abs(gain).grouped(), true, if (gain < 0) K.Danger else K.ChartIn)
                             PreviewRow("Sisa", InvKind.qtyText(k, ((old?.qty ?: 0.0) - q).coerceAtLeast(0.0)))
+                            if (k == "stock" && fe > 0) PreviewRow("Biaya (termasuk pajak 0,1%)", "−Rp" + fe.grouped() + " · pajak Rp" + Math.round(q * pr * 0.001).grouped())
                             PreviewRow("Uang masuk", "Rp" + (q * pr - fe).toLong().coerceAtLeast(0).grouped())
                         }
-                        else -> PreviewRow("Total dividen", "Rp" + ((old?.qty ?: 0.0) * pr).toLong().grouped(), true, K.ChartIn)
-                    }
-                    Text(if (mode == "buy" || mode == "new") "Dicatat dari" else "Masuk ke", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = K.OnSage, modifier = Modifier.padding(top = 6.dp))
-                    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        (accounts.map { it.id to it.name } + (0L to "Tanpa akun")).forEach { (id, n) ->
-                            Text(
-                                n, fontSize = 12.5.sp, fontWeight = FontWeight.ExtraBold, color = if (accountId == id) Color.White else K.Ink2,
-                                modifier = Modifier.clip(RoundedCornerShape(50)).background(if (accountId == id) K.Green else K.Tile).pressable { accountId = id }.padding(horizontal = 12.dp, vertical = 6.dp),
-                            )
+                        else -> {
+                            val gross = ((old?.qty ?: 0.0) * pr).toLong()
+                            PreviewRow("Dividen kotor", "Rp" + gross.grouped())
+                            PreviewRow("Pajak final 10%", "−Rp" + (gross / 10).grouped())
+                            PreviewRow("Diterima", "Rp" + (gross - gross / 10).grouped(), true, K.ChartIn)
                         }
                     }
+                    CPicker(
+                        if (mode == "buy" || mode == "new") "Dicatat dari" else "Masuk ke",
+                        accounts.map { a -> SelOpt(a.id.toString(), a.name, "Saldo Rp" + d.balanceOf(a).grouped()) } + SelOpt("0", "Tanpa akun", "saldo tidak berubah"),
+                        accountId.toString(), Modifier.padding(top = 8.dp), title = "Pilih akun",
+                    ) { accountId = it.toLongOrNull() ?: 0L }
                 }
             }
             err?.let { Text(it, fontSize = 12.5.sp, fontWeight = FontWeight.Bold, color = K.Danger, modifier = Modifier.padding(top = 8.dp)) }
@@ -570,11 +677,14 @@ fun InvTxnSheet(d: AppData, vm: AppViewModel, h: Holding?, p: Position?, mode: S
                     if (err != null) return@RedButton
                     val holding = h ?: Holding(
                         kind = kind, code = code.trim(), name = name.trim().ifBlank { quote?.name ?: code.trim() },
-                        lastPrice = quote?.price ?: pr, prevClose = quote?.prevClose ?: 0, priceTime = quote?.time ?: System.currentTimeMillis(),
+                        lastPrice = if (kind == "gold") gold?.get(code)?.buyback ?: pr else quote?.price ?: pr, prevClose = quote?.prevClose ?: 0, priceTime = quote?.time ?: System.currentTimeMillis(),
+                        coupon = if (kind == "bond") coupon.num() else 0.0,
                     )
                     val type = if (mode == "new") "buy" else mode
                     val tq = if (mode == "dividend") p?.qty ?: 0.0 else q
-                    vm.addInvTxn(holding, InvTxn(holdingId = holding.id, type = type, qty = tq, price = pr, fee = if (mode == "dividend") 0 else fe, time = time), accountId, newHolding = h == null)
+                    // Dividends are recorded net of the 10% final tax.
+                    val savePrice = if (mode == "dividend") Math.round(pr * 0.9) else pr
+                    vm.addInvTxn(holding, InvTxn(holdingId = holding.id, type = type, qty = tq, price = savePrice, fee = if (mode == "dividend") 0 else fe, time = time), accountId, newHolding = h == null)
                     onDismiss()
                 }
             }
@@ -584,7 +694,7 @@ fun InvTxnSheet(d: AppData, vm: AppViewModel, h: Holding?, p: Position?, mode: S
 }
 
 @Composable
-private fun Pill(text: String, onClick: () -> Unit) {
+internal fun Pill(text: String, onClick: () -> Unit) {
     Text(text, fontSize = 12.5.sp, fontWeight = FontWeight.ExtraBold, color = K.Green, modifier = Modifier.clip(RoundedCornerShape(50)).background(K.Tile).pressable(onClick).padding(horizontal = 12.dp, vertical = 6.dp))
 }
 
@@ -615,7 +725,7 @@ private fun NumberSheet(title: String, label: String, initial: Long, onDismiss: 
 }
 
 @Composable
-private fun ConfirmSheet(title: String, body: String, onDismiss: () -> Unit, onConfirm: () -> Unit) {
+internal fun ConfirmSheet(title: String, body: String, onDismiss: () -> Unit, onConfirm: () -> Unit) {
     Overlay(onDismiss) {
         CatetSheet {
             SheetHeader(title, onDismiss, size = 19)
@@ -623,6 +733,30 @@ private fun ConfirmSheet(title: String, body: String, onDismiss: () -> Unit, onC
             Row(Modifier.fillMaxWidth().padding(top = 18.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 CreamButton("Batal", Modifier.weight(1f), onClick = onDismiss)
                 RedButton("Hapus", Modifier.weight(1f), onClick = onConfirm)
+            }
+        }
+    }
+}
+
+private fun pctTxt(v: Double) = String.format(Locale("in", "ID"), "%.2f", v).trimEnd('0').trimEnd(',') + "%"
+
+/** Equal-width option tiles in a grid (no sideways scrolling); selected = green. Optional small line under each label. */
+@Composable
+internal fun ChoiceGrid(options: List<Pair<String, String>>, selected: String, cols: Int, sub: ((String) -> String?)? = null, onPick: (String) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        options.chunked(cols).forEach { row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                row.forEach { (key, label) ->
+                    val on = key == selected
+                    Column(
+                        Modifier.weight(1f).clip(RoundedCornerShape(14.dp)).background(if (on) K.Green else K.Tile).pressable { onPick(key) }.padding(horizontal = 8.dp, vertical = 8.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        Text(label, fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, color = if (on) Color.White else K.Ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        sub?.invoke(key)?.let { Text(it, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = if (on) Color(0xCCFFFFFF) else K.Muted, maxLines = 1) }
+                    }
+                }
+                repeat(cols - row.size) { Spacer(Modifier.weight(1f)) }
             }
         }
     }

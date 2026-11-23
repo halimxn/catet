@@ -1,5 +1,7 @@
 package id.kantong.app.ui.screens
 
+import id.kantong.app.data.startOfWeek
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -162,11 +164,13 @@ fun ReportsScreen(d: AppData, vm: AppViewModel, nav: Nav) {
         }
 
         // 2) Last 6 months / weeks (12 months in year mode).
-        val buckets = buckets(mode, from)
+        // Stable window: the latest 6 periods while the chosen one is among them, so tapping a bar never shifts the chart.
+        val latest = buckets(mode, if (mode == "week") startOfWeek() else startOfMonth())
+        val buckets = if (mode != "year" && latest.any { from in it.from until it.to }) latest else buckets(mode, from)
         val series = if (tab == 0) listOf("in", "out") else listOf(focus)
         val colors = series.map { if (it == "in") K.ChartIn else K.ChartOut }
         val groups = buckets.map { b -> BarGroup(b.label, series.map { k -> v.txns.filter { it.kind == k && it.time in b.from until b.to }.sumOf { it.amount } }) }
-        val selected = if (mode == "year") (if (today >= 0) Calendar.getInstance().get(Calendar.MONTH) else 11) else buckets.lastIndex
+        val selected = if (mode == "year") (if (today >= 0) Calendar.getInstance().get(Calendar.MONTH) else 11) else buckets.indexOfFirst { from in it.from until it.to }.takeIf { it >= 0 } ?: buckets.lastIndex
         Spacer(Modifier.height(12.dp))
         CCard(K.Card, radius = 26.dp, padding = CardPad) {
             CardHead(
@@ -178,18 +182,18 @@ fun ReportsScreen(d: AppData, vm: AppViewModel, nav: Nav) {
                     LegendKey(K.ChartIn, "Masuk"); LegendKey(K.ChartOut, "Keluar")
                 }
             }
-            if (groups.all { g -> g.values.all { it == 0L } }) {
-                EmptyText("Belum ada catatan di periode ini.")
-            } else {
-                GroupedBars(groups, colors, selected, Modifier.padding(top = 8.dp)) { i ->
-                    val b = buckets[i]
-                    when (mode) {
-                        "week" -> anchor = b.from
-                        "year" -> { mode = "month"; setMonth(b.from) }
-                        else -> setMonth(b.from)
-                    }
+            GroupedBars(groups, colors, selected, Modifier.padding(top = 8.dp)) { i ->
+                val b = buckets[i]
+                when (mode) {
+                    "week" -> anchor = b.from
+                    "year" -> { mode = "month"; setMonth(b.from) }
+                    else -> setMonth(b.from)
                 }
             }
+            if (groups.all { g -> g.values.all { it == 0L } }) Text(
+                "Belum ada catatan · ketuk bulan lain untuk melihatnya", fontSize = 12.5.sp, fontWeight = FontWeight.SemiBold, color = K.Muted,
+                textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+            )
         }
 
         // Ringkasan: choose whether the charts below show spending or income.
@@ -231,7 +235,7 @@ fun ReportsScreen(d: AppData, vm: AppViewModel, nav: Nav) {
         CCard(K.Card, radius = 26.dp, padding = CardPad) {
             CardHead("Per kategori", action = "Semua ›") { nav.go(R.types(focus)) }
             if (focusTotal == 0L) {
-                EmptyText(if (focus == "out") "Belum ada pengeluaran untuk dibagi per kategori." else "Belum ada pemasukan untuk dibagi per kategori.")
+                EmptyText(if (focus == "out") "Belum ada pengeluaran untuk dibagi per kategori." else "Belum ada pemasukan untuk dibagi per kategori.", icon = "category")
             } else {
                 CategoryDonut(slices, focusTotal, focus, openCat) { nav.go(R.types(focus)) }
             }
@@ -365,9 +369,10 @@ private fun CardHead(title: String, note: String? = null, action: String? = null
     }
 }
 
+/** Empty state: a two-tone sticker in a soft circle with a short line, so a section never looks blank. */
 @Composable
-private fun EmptyText(text: String) {
-    Text(text, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = K.Muted, modifier = Modifier.fillMaxWidth().padding(vertical = 18.dp), textAlign = TextAlign.Center)
+private fun EmptyText(text: String, icon: String = "report") {
+    id.kantong.app.ui.components.CEmpty(text, icon)
 }
 
 @Composable

@@ -1,6 +1,8 @@
 package id.kantong.app.ui
 
 import id.kantong.app.ui.screens.HoldingScreen
+import id.kantong.app.ui.screens.DebtsScreen
+import id.kantong.app.ui.screens.DebtDetailScreen
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
@@ -99,6 +101,8 @@ object R {
     fun ledger(id: Long) = "ledger/$id"
     fun account(id: Long) = "account/$id"
     fun holding(id: Long) = "holding/$id"
+    fun debt(id: Long) = "debt/$id"
+    const val DEBTS = "debts"
     fun accountEdit(id: Long = 0) = "account_edit/$id"
     fun types(kind: String) = "types/$kind"
 }
@@ -162,6 +166,10 @@ fun KantongApp() {
             composable(R.LEDGERS) { Screen { LedgersScreen(data, vm, nav) } }
             composable("ledger/{id}", listOf(navArgument("id") { type = NavType.LongType })) { e ->
                 Screen { LedgerDetailScreen(data, vm, nav, e.arguments?.getLong("id") ?: 0L) }
+            }
+            composable(R.DEBTS) { Screen { DebtsScreen(data, vm, nav) } }
+            composable("debt/{id}", listOf(navArgument("id") { type = NavType.LongType })) { e ->
+                Screen { DebtDetailScreen(data, vm, nav, e.arguments?.getLong("id") ?: 0L) }
             }
             composable("holding/{id}", listOf(navArgument("id") { type = NavType.LongType })) { e ->
                 Screen { HoldingScreen(data, vm, nav, e.arguments?.getLong("id") ?: 0L) }

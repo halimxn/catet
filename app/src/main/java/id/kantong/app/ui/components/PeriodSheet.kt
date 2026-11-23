@@ -31,6 +31,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
@@ -134,14 +135,16 @@ fun PeriodSheet(
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         row.forEach { m ->
                             val on = m == pager.currentPage
+                            val fut = future(m) && !on
                             Box(
-                                Modifier.weight(1f).height(38.dp).clip(RoundedCornerShape(13.dp))
-                                    .background(if (on) K.Green else K.Tile)
-                                    .graphicsLayer { alpha = if (future(m) && !on) 0.45f else 1f }
-                                    .pressable { scope.launch { pager.animateScrollToPage(m) } },
+                                Modifier.weight(1f).height(38.dp).let { mm ->
+                                    if (fut) mm.drawBehind {
+                                        drawRoundRect(K.YellowLine, cornerRadius = androidx.compose.ui.geometry.CornerRadius(13.dp.toPx()), style = androidx.compose.ui.graphics.drawscope.Stroke(1.4.dp.toPx(), pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 4.dp.toPx()))))
+                                    } else mm.clip(RoundedCornerShape(13.dp)).background(if (on) K.Green else K.Tile)
+                                }.clip(RoundedCornerShape(13.dp)).pressable { scope.launch { pager.animateScrollToPage(m) } },
                                 contentAlignment = Alignment.Center,
                             ) {
-                                Text(MONTHS[m].take(3), fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, color = if (on) Color.White else K.Ink2, maxLines = 1)
+                                Text(MONTHS[m].take(3), fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, color = if (on) Color.White else if (fut) K.Muted.copy(alpha = 0.7f) else K.Ink2, maxLines = 1)
                             }
                         }
                     }

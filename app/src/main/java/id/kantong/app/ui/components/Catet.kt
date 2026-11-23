@@ -1,5 +1,13 @@
 package id.kantong.app.ui.components
 
+import androidx.compose.runtime.setValue
+
+import androidx.compose.runtime.getValue
+
+import androidx.compose.runtime.remember
+
+import androidx.compose.runtime.mutableStateOf
+
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -195,3 +203,43 @@ fun CListRow(
 @Composable
 fun CHandle(modifier: Modifier = Modifier) =
     Box(modifier.padding(top = 10.dp).size(40.dp, 5.dp).clip(RoundedCornerShape(3.dp)).background(Color(0xFFDDD6C6)))
+
+/** Empty state: two-tone sticker in a soft circle and one short line, so an empty section never looks blank. */
+@Composable
+fun CEmpty(text: String, icon: String = "report", modifier: Modifier = Modifier, bg: Color = K.Tile) {
+    Column(modifier.fillMaxWidth().padding(vertical = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(Modifier.size(64.dp).clip(androidx.compose.foundation.shape.CircleShape).background(bg), contentAlignment = Alignment.Center) { CatIcon(icon, 40.dp) }
+        Text(text, fontSize = 14.sp, lineHeight = 20.sp, fontWeight = FontWeight.SemiBold, color = K.Muted, textAlign = androidx.compose.ui.text.style.TextAlign.Center, modifier = Modifier.padding(top = 10.dp, start = 16.dp, end = 16.dp))
+    }
+}
+
+/** One option of a [CPicker]. */
+class SelOpt(val key: String, val label: String, val sub: String? = null, val icon: String? = null)
+
+/**
+ * Select row used in every form (same look as the budget form): small label, chosen value (+ optional detail)
+ * and "Pilih ›"; tapping opens a menu of options. Replaces sideways chip rows.
+ */
+@Composable
+fun CPicker(
+    label: String, options: List<SelOpt>, selected: String, modifier: Modifier = Modifier,
+    title: String = label, empty: String = "Pilih", bg: Color = K.Tile, onPick: (String) -> Unit,
+) {
+    var open by remember { mutableStateOf(false) }
+    val a = rememberAnchor()
+    val cur = options.firstOrNull { it.key == selected }
+    Row(
+        modifier.fillMaxWidth().anchor(a).clip(RoundedCornerShape(16.dp)).background(bg).pressable { open = true }.padding(horizontal = 14.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(label, fontSize = 11.5.sp, fontWeight = FontWeight.SemiBold, color = K.Muted, maxLines = 1)
+            Text(cur?.label ?: empty, fontSize = 15.sp, fontWeight = FontWeight.ExtraBold, color = if (cur == null) K.Muted else K.Ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            cur?.sub?.let { Text(it, fontSize = 11.5.sp, fontWeight = FontWeight.SemiBold, color = K.Muted, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+        }
+        Text("Pilih ›", fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, color = K.Green)
+    }
+    if (open) PillMenu(a.rect, { open = false }, width = 280.dp, title = title) {
+        options.forEach { o -> PillOption(o.label, id.kantong.app.ui.theme.Tone.SAGE, o.key == selected, { onPick(o.key); open = false }, icon = o.icon, sub = o.sub) }
+    }
+}

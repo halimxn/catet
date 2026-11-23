@@ -119,6 +119,7 @@ fun SearchScreen(d: AppData, vm: AppViewModel, nav: Nav) {
     var dateEdit by remember { mutableStateOf<String?>(null) } // "from" | "to"
     var amountEdit by remember { mutableStateOf<String?>(null) } // "min" | "max"
     var open by remember { mutableStateOf<Txn?>(null) }
+    var splitTx by remember { mutableStateOf<Txn?>(null) }
     val keyboard = LocalSoftwareKeyboardController.current
     val focus = LocalFocusManager.current
     val hideKeyboard = { keyboard?.hide(); focus.clearFocus() }
@@ -278,8 +279,10 @@ fun SearchScreen(d: AppData, vm: AppViewModel, nav: Nav) {
         RecordDetailCard(
             d, cur, onDismiss = { open = null }, onEdit = { open = null; nav.go(R.add(cur.id)) },
             onDelete = { vm.deleteTxn(cur); open = null }, onStar = { vm.toggleStar(cur) }, onReimburse = { vm.setReimburse(cur, it) },
+            onSplit = { open = null; splitTx = cur },
         )
     }
+    splitTx?.let { s -> SplitSheet(d, vm, s) { splitTx = null } }
 }
 
 private fun toggle(list: SnapshotStateList<Long>, id: Long) { if (id in list) list.remove(id) else list.add(id) }

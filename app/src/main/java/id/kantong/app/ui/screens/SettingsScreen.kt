@@ -296,6 +296,11 @@ fun SettingsScreen(d: AppData, vm: AppViewModel, nav: Nav) {
                 if (reimburseLeft > 0) "${reimburseLeft.rupiah()} belum kembali" else "Tidak ada yang menunggu",
                 onClick = { nav.go(R.REIMBURSE) },
             )
+            CListRow(
+                "card", "Utang & piutang",
+                if (d.receivable == 0L && d.payable == 0L) "Pinjaman dan patungan" else "Piutang ${d.receivable.rupiah()} · utang ${d.payable.rupiah()}",
+                onClick = { nav.go(R.DEBTS) },
+            )
             CListRow("bookmark", "Bookmark", "${d.starred.size} transaksi", onClick = { nav.go(R.BOOKMARKS) })
             CListRow(
                 "jar", "Target tabungan",

@@ -19,7 +19,7 @@ import org.json.JSONObject
 object Db {
     @Volatile private var db: KantongDb? = null
     fun get(ctx: Context): KantongDb = db ?: synchronized(this) {
-        db ?: Room.databaseBuilder(ctx.applicationContext, KantongDb::class.java, "kantong.db").addMigrations(MIGRATION_1_2, MIGRATION_2_3).build().also { db = it }
+        db ?: Room.databaseBuilder(ctx.applicationContext, KantongDb::class.java, "kantong.db").addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5).build().also { db = it }
     }
 }
 
@@ -39,7 +39,17 @@ data class AppData(
     val allTxns: List<Txn> = txns,
     val holdings: List<Holding> = emptyList(),
     val invTxns: List<InvTxn> = emptyList(),
+    val debts: List<Debt> = emptyList(),
+    val debtPays: List<DebtPay> = emptyList(),
 ) {
+    // ----- debts -----
+    fun debt(id: Long): Debt? = debts.firstOrNull { it.id == id }
+    fun debtState(x: Debt): DebtState = DebtState.of(x, debtPays.filter { it.debtId == x.id })
+    val debtStates: List<DebtState> get() = debts.map { debtState(it) }
+    /** Still owed to me (+) minus what I still owe (−). */
+    val receivable: Long get() = debtStates.filter { it.debt.direction == "lend" && !it.done }.sumOf { it.remaining }
+    val payable: Long get() = debtStates.filter { it.debt.direction == "borrow" && !it.done }.sumOf { it.remaining }
+
     // ----- investments -----
     fun holding(id: Long): Holding? = holdings.firstOrNull { it.id == id }
     fun position(h: Holding): Position = Position.of(h, invTxns.filter { it.holdingId == h.id })
@@ -134,8 +144,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     val data: StateFlow<AppData> = combine(
         combine(dao.accounts(), dao.categories(), dao.transactions(), dao.goals(), dao.bills()) { a, c, t, g, b -> AppData(a, c, t, g, b, loaded = true) },
-        dao.ledgers(), dao.budgets(), dao.holdings(), dao.invTxns(),
-    ) { d, l, b, h, it2 -> d.copy(ledgers = l, budgets = b, holdings = h, invTxns = it2) }
+        combine(dao.ledgers(), dao.budgets(), dao.holdings(), dao.invTxns()) { l, b, h, it2 -> listOf(l, b, h, it2) },
+        combine(dao.debts(), dao.debtPays()) { x, p -> x to p },
+    ) { d, rest, dp ->
+        @Suppress("UNCHECKED_CAST")
+        d.copy(
+            ledgers = rest[0] as List<Ledger>, budgets = rest[1] as List<Budget>, holdings = rest[2] as List<Holding>,
+            invTxns = rest[3] as List<InvTxn>, debts = dp.first, debtPays = dp.second,
+        )
+    }
         .stateIn(viewModelScope, SharingStarted.Eagerly, AppData())
 
     /** One-shot filter handed to Riwayat when another screen opens it for a category. */
@@ -196,14 +213,71 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         )
         dao.upsertInvTxn(t.copy(holdingId = hid, txnId = txnId))
     }
+    // ----- debts -----
+    /** Saves a new loan; with an account the money moves (lend = out of it, borrow = into it) as a transfer. */
+    fun addDebt(x: Debt, accountId: Long) = viewModelScope.launch(Dispatchers.IO) {
+        val txnId = if (accountId <= 0) 0L else dao.upsertTxn(
+            if (x.direction == "lend") Txn(amount = x.amount, kind = "transfer", categoryId = null, accountId = accountId, toAccountId = null, merchant = "Pinjamkan ke ${x.person}", time = x.time)
+            else Txn(amount = x.amount, kind = "transfer", categoryId = null, accountId = 0, toAccountId = accountId, merchant = "Pinjam dari ${x.person}", time = x.time),
+        )
+        dao.upsertDebt(x.copy(txnId = txnId))
+    }
+    fun saveDebt(x: Debt) = viewModelScope.launch(Dispatchers.IO) { dao.upsertDebt(x) }
+    /** Records a repayment; money moves the opposite way of the loan. */
+    fun payDebt(x: Debt, amount: Long, time: Long, accountId: Long) = viewModelScope.launch(Dispatchers.IO) {
+        val txnId = if (accountId <= 0) 0L else dao.upsertTxn(
+            if (x.direction == "lend") Txn(amount = amount, kind = "transfer", categoryId = null, accountId = 0, toAccountId = accountId, merchant = "Cicilan dari ${x.person}", time = time)
+            else Txn(amount = amount, kind = "transfer", categoryId = null, accountId = accountId, toAccountId = null, merchant = "Bayar utang ke ${x.person}", time = time),
+        )
+        dao.upsertDebtPay(DebtPay(debtId = x.id, amount = amount, time = time, txnId = txnId))
+    }
+    fun deleteDebtPay(p: DebtPay) = viewModelScope.launch(Dispatchers.IO) { if (p.txnId > 0) dao.deleteTxnById(p.txnId); dao.deleteDebtPay(p) }
+    fun deleteDebt(x: Debt, pays: List<DebtPay>) = viewModelScope.launch(Dispatchers.IO) {
+        pays.filter { it.txnId > 0 }.forEach { dao.deleteTxnById(it.txnId) }
+        if (x.txnId > 0) dao.deleteTxnById(x.txnId)
+        dao.deleteDebtPaysOf(x.id); dao.deleteDebt(x)
+    }
+    /**
+     * Patungan: the spending record keeps only my share; each friend's share becomes a loan (piutang) paid from
+     * the same account, so the account balance stays exactly the same.
+     */
+    fun splitTxn(t: Txn, myShare: Long, friends: List<Pair<String, Long>>) = viewModelScope.launch(Dispatchers.IO) {
+        dao.upsertTxn(t.copy(amount = myShare))
+        friends.filter { it.second > 0 && it.first.isNotBlank() }.forEach { (name, amt) ->
+            val txnId = dao.upsertTxn(Txn(amount = amt, kind = "transfer", categoryId = null, accountId = t.accountId, toAccountId = null, merchant = "Patungan · ${name.trim()}", time = t.time, ledgerId = t.ledgerId))
+            dao.upsertDebt(Debt(person = name.trim(), direction = "lend", amount = amt, time = t.time, note = "Patungan " + t.merchant.ifBlank { t.note }, txnId = txnId, sourceTxnId = t.id))
+        }
+    }
+
     fun deleteInvTxn(t: InvTxn) = viewModelScope.launch(Dispatchers.IO) { if (t.txnId > 0) dao.deleteTxnById(t.txnId); dao.deleteInvTxn(t) }
 
-    /** Fetches the latest prices of all stocks (Yahoo Finance, IDX). Returns how many were updated. */
+    /**
+     * Fetches the latest prices: IDX stocks from Yahoo Finance, gold (Antam / UBS / Galeri24) from galeri24.co.id
+     * valued at the buyback price. Returns how many were updated.
+     */
     suspend fun refreshPrices(holdings: List<Holding>): Int = withContext(Dispatchers.IO) {
         var n = 0
         holdings.filter { it.kind == "stock" }.forEach { h ->
             runCatching { Prices.quote(h.code) }.getOrNull()?.let { q ->
                 dao.upsertHolding(h.copy(lastPrice = q.price, prevClose = q.prevClose, priceTime = q.time)); n++
+            }
+        }
+        val bonds = holdings.filter { it.kind == "bond" && Prices.bondTradable(it.code) }
+        if (bonds.isNotEmpty()) runCatching { Prices.bonds() }.getOrNull()?.let { all ->
+            bonds.forEach { h ->
+                Prices.findBond(all, h.code)?.let { (_, b) ->
+                    val prev = if (h.lastPrice > 0 && b.perJuta != h.lastPrice) h.lastPrice else h.prevClose
+                    dao.upsertHolding(h.copy(lastPrice = b.perJuta, prevClose = prev, priceTime = System.currentTimeMillis(), coupon = if (h.coupon > 0) h.coupon else b.coupon)); n++
+                }
+            }
+        }
+        val golds = holdings.filter { it.kind == "gold" && it.code in Prices.GOLD_VENDORS }
+        if (golds.isNotEmpty()) runCatching { Prices.gold() }.getOrNull()?.let { table ->
+            golds.forEach { h ->
+                table[h.code]?.let { g ->
+                    val prev = if (h.lastPrice > 0 && g.buyback != h.lastPrice) h.lastPrice else h.prevClose
+                    dao.upsertHolding(h.copy(lastPrice = g.buyback, prevClose = prev, priceTime = System.currentTimeMillis())); n++
+                }
             }
         }
         n
@@ -238,8 +312,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         root.put("transactions", JSONArray(dao.allTransactions().map { JSONObject().put("id", it.id).put("amount", it.amount).put("kind", it.kind).put("categoryId", it.categoryId ?: JSONObject.NULL).put("accountId", it.accountId).put("toAccountId", it.toAccountId ?: JSONObject.NULL).put("merchant", it.merchant).put("note", it.note).put("time", it.time).put("ledgerId", it.ledgerId).put("reimburse", it.reimburse).put("starred", it.starred).put("fee", it.fee) }))
         root.put("ledgers", JSONArray(dao.allLedgers().map { JSONObject().put("id", it.id).put("name", it.name).put("icon", it.icon).put("tone", it.tone).put("archived", it.archived).put("sortOrder", it.sortOrder) }))
         root.put("budgets", JSONArray(dao.allBudgets().map { JSONObject().put("id", it.id).put("name", it.name).put("period", it.period).put("categoryIds", it.categoryIds).put("amount", it.amount).put("start", it.start).put("end", it.end).put("rollover", it.rollover).put("rolloverOver", it.rolloverOver) }))
-        root.put("holdings", JSONArray(dao.allHoldings().map { JSONObject().put("id", it.id).put("kind", it.kind).put("code", it.code).put("name", it.name).put("lastPrice", it.lastPrice).put("prevClose", it.prevClose).put("priceTime", it.priceTime).put("targetPrice", it.targetPrice).put("accountId", it.accountId) }))
+        root.put("holdings", JSONArray(dao.allHoldings().map { JSONObject().put("id", it.id).put("kind", it.kind).put("code", it.code).put("name", it.name).put("lastPrice", it.lastPrice).put("prevClose", it.prevClose).put("priceTime", it.priceTime).put("targetPrice", it.targetPrice).put("accountId", it.accountId).put("coupon", it.coupon) }))
         root.put("invTxns", JSONArray(dao.allInvTxns().map { JSONObject().put("id", it.id).put("holdingId", it.holdingId).put("type", it.type).put("qty", it.qty).put("price", it.price).put("fee", it.fee).put("time", it.time).put("txnId", it.txnId) }))
+        root.put("debts", JSONArray(dao.allDebts().map { JSONObject().put("id", it.id).put("person", it.person).put("direction", it.direction).put("amount", it.amount).put("time", it.time).put("dueDate", it.dueDate).put("note", it.note).put("installments", it.installments).put("firstDue", it.firstDue).put("settled", it.settled).put("txnId", it.txnId).put("sourceTxnId", it.sourceTxnId) }))
+        root.put("debtPays", JSONArray(dao.allDebtPays().map { JSONObject().put("id", it.id).put("debtId", it.debtId).put("amount", it.amount).put("time", it.time).put("txnId", it.txnId) }))
         root.put("goals", JSONArray(dao.allGoals().map { JSONObject().put("id", it.id).put("name", it.name).put("icon", it.icon).put("tone", it.tone).put("target", it.target).put("saved", it.saved).put("deadline", it.deadline ?: JSONObject.NULL) }))
         root.put("bills", JSONArray(dao.allBills().map { JSONObject().put("id", it.id).put("name", it.name).put("amount", it.amount).put("dueDay", it.dueDay).put("categoryId", it.categoryId ?: JSONObject.NULL).put("icon", it.icon).put("tone", it.tone).put("paidMonthKey", it.paidMonthKey) }))
         getApplication<Application>().contentResolver.openOutputStream(uri, "wt")!!.use { it.write(root.toString(2).toByteArray()) }
@@ -264,8 +340,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         dao.clearTxns(); dao.clearBills(); dao.clearGoals(); dao.clearCategories(); dao.clearAccounts(); dao.clearLedgers(); dao.clearBudgets()
         dao.insertAccounts(accounts); dao.insertCategories(cats); dao.insertTxns(txns); dao.insertGoals(goals); dao.insertBills(bills)
         dao.insertLedgers(ledgers); dao.insertBudgets(budgets)
-        val holdings = arrOrEmpty("holdings").map { Holding(it.getLong("id"), it.getString("kind"), it.getString("code"), it.getString("name"), it.optLong("lastPrice"), it.optLong("prevClose"), it.optLong("priceTime"), it.optLong("targetPrice"), it.optLong("accountId")) }
+        val holdings = arrOrEmpty("holdings").map { Holding(it.getLong("id"), it.getString("kind"), it.getString("code"), it.getString("name"), it.optLong("lastPrice"), it.optLong("prevClose"), it.optLong("priceTime"), it.optLong("targetPrice"), it.optLong("accountId"), it.optDouble("coupon", 0.0)) }
         val invTxns = arrOrEmpty("invTxns").map { InvTxn(it.getLong("id"), it.getLong("holdingId"), it.getString("type"), it.getDouble("qty"), it.getLong("price"), it.optLong("fee"), it.getLong("time"), it.optLong("txnId")) }
         dao.clearHoldings(); dao.clearInvTxns(); dao.insertHoldings(holdings); dao.insertInvTxns(invTxns)
+        val debts = arrOrEmpty("debts").map { Debt(it.getLong("id"), it.getString("person"), it.getString("direction"), it.getLong("amount"), it.getLong("time"), it.optLong("dueDate"), it.optString("note"), it.optInt("installments"), it.optLong("firstDue"), it.optInt("settled"), it.optLong("txnId"), it.optLong("sourceTxnId")) }
+        val pays = arrOrEmpty("debtPays").map { DebtPay(it.getLong("id"), it.getLong("debtId"), it.getLong("amount"), it.getLong("time"), it.optLong("txnId")) }
+        dao.clearDebts(); dao.clearDebtPays(); dao.insertDebts(debts); dao.insertDebtPays(pays)
     }
 }

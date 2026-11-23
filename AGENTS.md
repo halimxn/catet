@@ -233,12 +233,18 @@ Baca file ini **sebelum mengubah apa pun**. Semua aturan di sini sudah disetujui
   - Aset dibagi **Uang** (kartu krem) dan **Investasi** (kartu sage + daftar krem, sakelar `Prefs.showInvest`).
   - Harga rata-rata tertimbang dihitung dari riwayat beli (`Position.of`); jual tidak mengubah rata-rata.
   - Beli = transfer keluar dari akun (toAccountId null); jual/dividen = transfer masuk (accountId 0), supaya tidak dihitung pengeluaran/pemasukan.
-  - Harga saham BEI dari Yahoo Finance (`Prices`), hanya saat tombol ↻ diketuk atau detail dibuka; emas/obligasi/reksa dana harga manual.
+  - Harga saham BEI dari Yahoo Finance (`Prices`), hanya saat tombol ↻ diketuk atau detail dibuka.
+  - Emas: penjual Antam / UBS / Galeri24 (Pegadaian) dari galeri24.co.id (`Prices.gold()`, baris 1 gram); `code` = kunci penjual, nilai memakai harga buyback, beli memakai harga jual. "Lainnya" = harga manual.
+  - Obligasi: kolom `coupon` (% per tahun, DB v5 `MIGRATION_4_5`); kupon bersih per bulan = modal × kupon ÷ 12 × 0,9 (pajak final 10%). Reksa dana: harga manual (tidak ada sumber gratis yang andal).
+  - Biaya broker otomatis (`Brokers`, `Prefs.broker`): Ajaib, Stockbit, IPOT, BNI, Mirae, Tanpa biaya; mengisi biaya beli/jual saham sampai pengguna mengetik sendiri.
+- Utang & piutang (`data/Debts.kt`, `ui/screens/DebtScreen.kt`, tabel `debts` + `debt_pays`, DB v4 `MIGRATION_3_4`). Arisan sengaja tidak dibuat (keputusan pemilik).
+  - Rute `R.DEBTS`, `R.debt(id)`; masuk dari kartu ringkas di Aset dan Saya › Kelola. Piutang/utang ikut kekayaan bersih.
+  - Cicilan bulanan terjadwal (`installments`, `firstDue`), status lewat jatuh tempo, "Ingatkan via WA" (wa.me, pengguna yang menekan kirim).
+  - Patungan dari `RecordDetailCard` (`onSplit`, `SplitSheet`): catatan pengeluaran jadi bagian sendiri, bagian teman jadi piutang lewat transfer dari akun yang sama sehingga saldo tidak berubah.
 
 **Belum dibuat** (rencana berikutnya, urut prioritas):
-1. **Utang-piutang dan arisan:** tab atau kelompok baru di Aset, dengan warna `Danger` untuk utang.
-2. **Zakat & sedekah:** kalkulator sederhana dari aset, dibuka dari "Kelola".
-3. **Foto struk** di transaksi, ditampilkan sebagai thumbnail di lembar detail. Setelah itu OCR struk on-device (ML Kit).
+1. **Zakat & sedekah:** kalkulator sederhana dari aset, dibuka dari "Kelola".
+2. **Foto struk** di transaksi, ditampilkan sebagai thumbnail di lembar detail. Setelah itu OCR struk on-device (ML Kit).
 6. **Widget layar utama:** sisa uang dan jatah harian, memakai gaya kartu kuning.
 7. **Ekspor PDF laporan bulanan.**
 8. **Deteksi notifikasi transaksi** on-device (izin notification listener).

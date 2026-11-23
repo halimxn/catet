@@ -75,8 +75,8 @@ fun amountText(t: Txn): Pair<String, Color> = when (t.kind) {
 /** Title (category, or "Transfer") and remark (merchant/note, or "BCA → GoPay"). */
 fun recordTitle(d: AppData, t: Txn): Pair<String, String> = if (t.kind == "transfer") {
     t.merchant.ifBlank { "Transfer" } to when {
-        d.account(t.accountId) == null -> "Investasi → ${d.account(t.toAccountId)?.name ?: "-"}"
-        d.account(t.toAccountId) == null -> "${d.account(t.accountId)?.name ?: "-"} → Investasi"
+        d.account(t.accountId) == null -> "${otherSide(t)} → ${d.account(t.toAccountId)?.name ?: "-"}"
+        d.account(t.toAccountId) == null -> "${d.account(t.accountId)?.name ?: "-"} → ${otherSide(t)}"
         else -> "${d.account(t.accountId)?.name} → ${d.account(t.toAccountId)?.name}"
     }
 } else {
@@ -116,7 +116,7 @@ fun CleanRow(d: AppData, t: Txn, onClick: () -> Unit) {
     val transfer = t.kind == "transfer"
     val useRemark = !transfer && Prefs.showRemark && remark.isNotBlank()
     val title = when {
-        transfer -> "Transfer"
+        transfer -> t.merchant.ifBlank { "Transfer" }
         useRemark -> remark
         else -> cat?.name ?: "Tanpa kategori"
     }
@@ -149,9 +149,9 @@ fun CleanRow(d: AppData, t: Txn, onClick: () -> Unit) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 when {
                     transfer -> {
-                        AccountMark(d.account(t.accountId))
+                        d.account(t.accountId)?.let { AccountMark(it) } ?: SubText(otherSide(t))
                         Sep()
-                        AccountMark(d.account(t.toAccountId))
+                        d.account(t.toAccountId)?.let { AccountMark(it) } ?: SubText(otherSide(t))
                     }
                     useRemark -> {
                         Dot(K.Gold)
@@ -300,14 +300,14 @@ internal fun DangerOutlineButton(label: String, modifier: Modifier = Modifier, f
 @Composable
 fun RecordDetailCard(
     d: AppData, t: Txn, onDismiss: () -> Unit, onEdit: () -> Unit, onDelete: () -> Unit,
-    onStar: () -> Unit, onReimburse: (Int) -> Unit,
+    onStar: () -> Unit, onReimburse: (Int) -> Unit, onSplit: (() -> Unit)? = null,
 ) {
     var confirm by remember { mutableStateOf(false) }
     val transfer = t.kind == "transfer"
     val cat = d.category(t.categoryId)
     val root = d.rootOf(t.categoryId)
     val title = when {
-        transfer -> "Transfer"
+        transfer -> t.merchant.ifBlank { "Transfer" }
         t.merchant.isNotBlank() -> t.merchant
         t.note.isNotBlank() -> t.note
         else -> cat?.name ?: "Tanpa kategori"
@@ -376,6 +376,10 @@ fun RecordDetailCard(
                     DangerOutlineButton("Hapus", Modifier.weight(1f), filled = true, onClick = onDelete)
                 }
             } else {
+                if (onSplit != null && t.kind == "out") Box(
+                    Modifier.padding(bottom = 9.dp).fillMaxWidth().height(46.dp).clip(RoundedCornerShape(15.dp)).background(K.Field).pressable(onSplit),
+                    contentAlignment = Alignment.Center,
+                ) { Text("Patungan dengan teman", fontSize = 15.sp, fontWeight = FontWeight.ExtraBold, color = K.Green) }
                 Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
                     DangerOutlineButton("Hapus", Modifier.weight(1f)) { confirm = true }
                     Row(
@@ -423,4 +427,11 @@ private fun InfoRow(label: String, value: String, first: Boolean = false, icon: 
             }
         }
     }
+}
+
+/** Label for the side of a transfer that isn't an account: investments or debts. */
+internal fun otherSide(t: Txn): String = when {
+    t.merchant.startsWith("Beli ") || t.merchant.startsWith("Jual ") || t.merchant.startsWith("Dividen ") -> "Investasi"
+    t.merchant.isNotBlank() -> "Utang-piutang"
+    else -> "-"
 }
