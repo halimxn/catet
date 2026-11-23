@@ -170,7 +170,7 @@ internal fun Medal(b: Badge, size: Dp) {
         } else {
             Canvas(Modifier.size(size)) {
                 val w = this.size.minDimension * 0.09f
-                drawArc(Color(0xFFEDE6D6), 0f, 360f, false, topLeft = androidx.compose.ui.geometry.Offset(w / 2, w / 2), size = androidx.compose.ui.geometry.Size(this.size.width - w, this.size.height - w), style = Stroke(w))
+                drawArc(K.c(0xFFEDE6D6, 0xFF313732), 0f, 360f, false, topLeft = androidx.compose.ui.geometry.Offset(w / 2, w / 2), size = androidx.compose.ui.geometry.Size(this.size.width - w, this.size.height - w), style = Stroke(w))
                 if (b.progress > 0f) drawArc(
                     K.ChartOut, -90f, 360f * b.progress, false, topLeft = androidx.compose.ui.geometry.Offset(w / 2, w / 2),
                     size = androidx.compose.ui.geometry.Size(this.size.width - w, this.size.height - w), style = Stroke(w, cap = StrokeCap.Round),
@@ -226,7 +226,7 @@ fun AchieveScreen(d: AppData, nav: Nav) {
                             val color = if (day == today && !done) K.ChartOut else K.YellowLine
                             Box(
                                 Modifier.weight(1f).height(30.dp).clip(RoundedCornerShape(10.dp))
-                                    .background(when { done -> K.Green; day == today -> K.Tile; dashed -> Color.Transparent; else -> Color(0xFFF3E2B3) })
+                                    .background(when { done -> K.Green; day == today -> K.Tile; dashed -> Color.Transparent; else -> K.c(0xFFF3E2B3, 0xFF4B4431) })
                                     .drawBehind {
                                         if (dashed) drawRoundRect(
                                             color, cornerRadius = CornerRadius(10.dp.toPx()),
@@ -237,7 +237,7 @@ fun AchieveScreen(d: AppData, nav: Nav) {
                             ) {
                                 Text(
                                     "$day", fontSize = 12.sp, fontWeight = FontWeight.ExtraBold,
-                                    color = when { done -> K.Yellow; day == today -> K.ChartOut; dashed -> Color(0xFFC9B78E); else -> Color(0xFFB8A57E) },
+                                    color = when { done -> K.Yellow; day == today -> K.ChartOut; dashed -> K.c(0xFFC9B78E, 0xFF6E6650); else -> K.c(0xFFB8A57E, 0xFF8F8466) },
                                 )
                             }
                         }
@@ -253,12 +253,12 @@ fun AchieveScreen(d: AppData, nav: Nav) {
                 Modifier.padding(top = 12.dp).fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(K.Pink).pressable { open = b }.padding(horizontal = 14.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Box(Modifier.size(44.dp).clip(CircleShape).background(Color(0x8CFFFFFF)), contentAlignment = Alignment.Center) { BadgeIcon(b.icon, 26.dp) }
+                Box(Modifier.size(44.dp).clip(CircleShape).background(K.veil(0.55f)), contentAlignment = Alignment.Center) { BadgeIcon(b.icon, 26.dp) }
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
                     Text("Berikutnya", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = K.OnPink)
                     Text(b.name, fontSize = 15.5.sp, fontWeight = FontWeight.ExtraBold, color = K.Ink)
-                    Box(Modifier.padding(top = 6.dp).fillMaxWidth().height(7.dp).clip(RoundedCornerShape(4.dp)).background(Color(0x99FFFFFF))) {
+                    Box(Modifier.padding(top = 6.dp).fillMaxWidth().height(7.dp).clip(RoundedCornerShape(4.dp)).background(K.veil(0.60f))) {
                         Box(Modifier.fillMaxWidth(b.progress).height(7.dp).clip(RoundedCornerShape(4.dp)).background(K.Green))
                     }
                 }

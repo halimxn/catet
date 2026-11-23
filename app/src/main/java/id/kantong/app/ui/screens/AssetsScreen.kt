@@ -379,7 +379,7 @@ private fun AssetChart(series: AssetSeries, mode: Int, height: Dp) {
                         drawPath(area, Brush.verticalGradient(listOf(color.copy(alpha = .35f), color.copy(alpha = 0f)), startY = g.top, endY = zero))
                         drawPath(line, color, style = Stroke(3.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
                         val p = pts[if (sel in 0 until n) sel else n - 1]
-                        drawCircle(Color.White, 5.dp.toPx(), p)
+                        drawCircle(K.OnGreen, 5.dp.toPx(), p)
                         drawCircle(color, 5.dp.toPx(), p, style = Stroke(3.dp.toPx()))
                     }
                 }
@@ -389,14 +389,14 @@ private fun AssetChart(series: AssetSeries, mode: Int, height: Dp) {
                     val date = if (span > DAY_MS) "${fmt(start, "d MMM")} – ${fmt(start + span - 1, "d MMM")}" else fmt(start, "d MMM yyyy")
                     PinAt({ w, h -> val g = chartGeo(w, h, n, bars, lo, hi); Offset(g.x(i), g.y(if (bars) maxOf(values[i], 0L) else values[i])) }) {
                         Column(Modifier.clip(RoundedCornerShape(12.dp)).background(K.Ink).padding(horizontal = 10.dp, vertical = 6.dp)) {
-                            Text(date, fontSize = 12.sp, lineHeight = 16.sp, fontWeight = FontWeight.SemiBold, color = Color.White.copy(alpha = .75f), maxLines = 1, softWrap = false)
-                            Text(assetAmount(values[i]), fontSize = 15.sp, lineHeight = 20.sp, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 1, softWrap = false)
+                            Text(date, fontSize = 12.sp, lineHeight = 16.sp, fontWeight = FontWeight.SemiBold, color = K.OnGreen.copy(alpha = .75f), maxLines = 1, softWrap = false)
+                            Text(assetAmount(values[i]), fontSize = 15.sp, lineHeight = 20.sp, fontWeight = FontWeight.Bold, color = K.OnGreen, maxLines = 1, softWrap = false)
                         }
                     }
                 } else if (!bars) {
                     PinAt({ w, h -> val g = chartGeo(w, h, n, false, lo, hi); Offset(g.x(n - 1), g.y(values[n - 1])) }) {
                         Text(
-                            values[n - 1].short(), fontSize = 12.sp, lineHeight = 16.sp, fontWeight = FontWeight.Bold, color = Color.White,
+                            values[n - 1].short(), fontSize = 12.sp, lineHeight = 16.sp, fontWeight = FontWeight.Bold, color = K.OnGreen,
                             maxLines = 1, softWrap = false,
                             modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(K.Ink).padding(horizontal = 8.dp, vertical = 2.dp),
                         )
@@ -665,7 +665,7 @@ private fun GoalRow(g: Goal, divider: Boolean, hidden: Boolean, onClick: () -> U
 /** Uang / Investasi box on the net worth card. */
 @Composable
 private fun NetBox(label: String, dot: Color, value: String, modifier: Modifier, dim: Boolean = false) {
-    Column(modifier.clip(RoundedCornerShape(16.dp)).background(Color(0x99FFFFFF)).padding(horizontal = 12.dp, vertical = 8.dp).let { if (dim) it.alpha(0.5f) else it }) {
+    Column(modifier.clip(RoundedCornerShape(16.dp)).background(K.veil(0.60f)).padding(horizontal = 12.dp, vertical = 8.dp).let { if (dim) it.alpha(0.5f) else it }) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(8.dp).clip(CircleShape).background(dot))
             Spacer(Modifier.width(6.dp))

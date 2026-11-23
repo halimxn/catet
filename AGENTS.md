@@ -241,7 +241,9 @@ Baca file ini **sebelum mengubah apa pun**. Semua aturan di sini sudah disetujui
   - Rute `R.DEBTS`, `R.debt(id)`; masuk dari kartu ringkas di Aset dan Saya › Kelola. Piutang/utang ikut kekayaan bersih.
   - Cicilan bulanan terjadwal (`installments`, `firstDue`), status lewat jatuh tempo, "Ingatkan via WA" (wa.me, pengguna yang menekan kirim).
 - Ekspor PDF laporan bulanan (`data/PdfReport.kt`, `ui/screens/PdfExport.kt`, ikon di header Laporan): PdfDocument bawaan Android + font Nunito (tebal disintesis). Hal. 1 ringkasan vs bulan lalu, wawasan otomatis, grafik harian, kategori, paling sering; hal. 2 anggaran, pemasukan, saldo akun, kekayaan; lalu daftar transaksi (opsional). Simpan via pemilih file, Bagikan via FileProvider (`external-cache-path` pdf/).
-- Widget layar utama (Jetpack Glance, `widget/CatetWidgets.kt`): **Catat cepat 4×1** (hari ini + 3 kategori favorit + "Catat") dan **Anggaran & catat 4×2** (sisa anggaran, bar, chip kategori ≥80%, 4 kategori + "Catat"). Ketuk kategori → Catat dengan kategori terpilih (`LaunchAction`, `vm.startAddCategory`); ketuk anggaran → `BudgetSheet`. Diperbarui saat data berubah. Pasang dari Saya › Kelola (`requestPinAppWidget`).
+- Widget layar utama (Jetpack Glance, `widget/CatetWidgets.kt`): **Catat cepat 4×1** (hari ini + 3 kategori favorit + "Catat") dan **Anggaran & catat 4×2** (sisa anggaran, bar, chip kategori ≥80%, 4 kategori + "Catat"). Ketuk kategori → Catat dengan kategori terpilih (`LaunchAction`, `vm.startAddCategory`); ketuk anggaran → `BudgetSheet`. Diperbarui saat data berubah. Pasang dari Saya › Kelola › "Widget layar utama" (`WidgetSheet`, `requestPinAppWidget`).
+  - Widget tambahan: **2×2** Sisa bulan ini (`MonthWidget`), Jatah harian (`DailyWidget`, 5 hari terakhir: hijau aman, oranye lewat), Streak (`StreakWidget`); **2×1** Catat (`CatatWidget`) dan Menunggu dicatat (`WaitWidget`, jumlah tagihan + deteksi). Semua 2×2 memakai susunan `Square` yang sama (kepala, angka 22sp, satu baris, zona bawah 32dp); 2×1 memakai `Half` (lingkaran 36dp, judul, satu baris).
+  - Warna widget ikut mode terang/gelap **HP** lewat `ColorProvider(day, night)` di `K` lokal widget (bukan pilihan tema di dalam aplikasi; itu batasan widget Android). Glyph putih diwarnai dengan `ColorFilter.tint`. Gambar pratinjau di `res/drawable-nodpi/widget_*_preview.png`.
 - Zakat & sedekah (`ui/screens/ZakatScreen.kt`, rute `R.ZAKAT`, dari Saya › Kelola): zakat maal 2,5% bila harta (uang + investasi + piutang − utang) ≥ nisab 85 g × harga emas Antam buyback (`Prefs.zakatGold`), dikurangi zakat yang sudah dibayar sejak awal haul (`Prefs.haulStart`); zakat penghasilan 2,5% bila pemasukan bulan ini ≥ nisab/12; target sedekah (`Prefs.sedekahTarget`). Bayar/catat lewat `vm.recordCharity` (kategori "Zakat"/"Sedekah" dibuat otomatis).
   - Patungan dari `RecordDetailCard` (`onSplit`, `SplitSheet`): catatan pengeluaran jadi bagian sendiri, bagian teman jadi piutang lewat transfer dari akun yang sama sehingga saldo tidak berubah.
 
@@ -256,9 +258,12 @@ Baca file ini **sebelum mengubah apa pun**. Semua aturan di sini sudah disetujui
   - `badgesOf`: 9 lencana dari data yang ada (catatan pertama, 7 & 30 hari beruntun, 100 catatan, pas anggaran bulan lalu, target tabungan, target sedekah, bebas utang, sebulan tanpa absen). Lencana yang pernah didapat disimpan di `Prefs.badgeTime` dan tidak hilang.
   - `BadgeWatcher` (di Beranda) menampilkan `BadgeSheet` sekali untuk lencana baru; pemeriksaan pertama (`Prefs.badgesInit`) menandai lencana lama sebagai sudah dilihat.
 
+- Mode gelap "senja redup" (`ui/theme/Theme.kt`): setiap token `K` punya pasangan gelap dan membaca `K.dark` (Compose state), jadi seluruh UI ikut berganti. `Tone` juga dihitung ulang. Warna sekali pakai lewat `K.c(terang, gelap)`, lapisan lembut di atas kartu berwarna lewat `K.veil(alpha)`, teks/ikon di atas tombol hijau pakai `K.OnGreen`.
+  - Pilihan di Saya › Tampilan: Terang / Gelap / Sistem (`Prefs.theme`) dan "Gelap otomatis malam" 18.00–06.00 (`Prefs.autoNight`), diperiksa tiap menit (`isDarkTheme`). Ikon status bar ikut tema.
+  - Jangan menulis `Color(0x…)` atau `Color.White` baru di layar; pakai token. Ikon stiker (`Illus.kt`) dan PDF sengaja tetap memakai palet terang. Widget punya `K` lokal sendiri yang mengikuti mode HP.
+
 **Belum dibuat** (rencana berikutnya, urut prioritas):
 1. **Foto/pindai struk: DITUNDA** (keputusan pemilik). Sempat dibuat lalu dicabut. Kolom `Txn.photo` dan `Txn.items` (DB v6–v7, `MIGRATION_5_6`, `MIGRATION_6_7`) tetap ada tapi tidak dipakai; jangan dihapus karena migrasi tidak bisa dibalik.
-10. **Mode gelap:** butuh token gelap tersendiri; jangan sekadar membalik warna.
 
 ## 7. Struktur kode dan data
 

@@ -80,7 +80,7 @@ fun CChip(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (icon != null) { CatIcon(icon, 22.dp); Spacer(Modifier.width(6.dp)) }
-        Text(text, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = if (selected) Color.White else K.Ink, maxLines = 1)
+        Text(text, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = if (selected) K.OnGreen else K.Ink, maxLines = 1)
     }
 }
 
@@ -88,7 +88,7 @@ fun CChip(
 @Composable
 fun CRoundButton(icon: ImageVector, desc: String, onClick: () -> Unit, modifier: Modifier = Modifier, size: Dp = 42.dp, outlined: Boolean = false) {
     Box(
-        modifier.size(size).clip(CircleShape).background(if (outlined) K.Sheet else Color(0xFFF1EDE2))
+        modifier.size(size).clip(CircleShape).background(if (outlined) K.Sheet else K.c(0xFFF1EDE2, 0xFF2C312C))
             .let { if (outlined) it.border(1.5.dp, K.Notch, CircleShape) else it }.pressable(onClick),
         contentAlignment = Alignment.Center,
     ) { Icon(icon, desc, tint = K.Ink, modifier = Modifier.size(size * 0.5f)) }
@@ -193,7 +193,7 @@ fun CListRow(
             }
             when {
                 trailing != null -> trailing()
-                onClick != null -> Text("›", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color(0xFFA39D90))
+                onClick != null -> Text("›", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = K.c(0xFFA39D90, 0xFF6E6A62))
             }
         }
     }
@@ -202,7 +202,7 @@ fun CListRow(
 /** Sheet handle bar. */
 @Composable
 fun CHandle(modifier: Modifier = Modifier) =
-    Box(modifier.padding(top = 10.dp).size(40.dp, 5.dp).clip(RoundedCornerShape(3.dp)).background(Color(0xFFDDD6C6)))
+    Box(modifier.padding(top = 10.dp).size(40.dp, 5.dp).clip(RoundedCornerShape(3.dp)).background(K.c(0xFFDDD6C6, 0xFF3A3F3B)))
 
 /** Empty state: two-tone sticker in a soft circle and one short line, so an empty section never looks blank. */
 @Composable

@@ -87,10 +87,13 @@ The visual style follows the "R89" reference: warm cream background, deep green 
 - Summary vs last month, automatic insights, daily chart, budgets, income sources, account balances, net worth and the transaction list, saved or shared as an A4 PDF.
 
 **Home screen widgets**
-- Catat cepat (4×1) and Anggaran & catat (4×2): quick entry by category and the remaining budget at a glance.
+- Seven widgets that follow the phone's light/dark mode: Catat cepat (4×1), Anggaran & catat (4×2), Sisa bulan ini, Jatah harian and Streak (2×2), Catat and Menunggu dicatat (2×1).
 
 **Automatic detection from notifications**
 - Reads payment and transfer notifications from supported bank and e-wallet apps (BCA, Mandiri, BRI, BNI, GoPay, OVO, DANA, ShopeePay and more) into waiting records with a guessed category and account. Save, review or skip from Beranda or the notification itself. Runs entirely on the device; OTPs and promos are ignored and notification text is not stored.
+
+**Dark mode**
+- A warm "dusk" dark theme with night versions of the pastel cards. Choose light, dark or follow the phone, and optionally switch to dark automatically from 18.00 to 06.00.
 
 **Streaks and badges**
 - A small flame on Beranda counts days in a row with at least one record. The Pencapaian screen shows the month at a glance and nine badges earned from everyday habits, with no mascot.
@@ -165,7 +168,7 @@ adb install -r app/build/outputs/apk/release/app-release.apk
 - [ ] Receipt photos with on-device OCR
 - [x] Transaction detection from notifications (on-device)
 - [x] Logging streaks and badges
-- [ ] Dark mode
+- [x] Dark mode
 
 ## License
 

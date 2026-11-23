@@ -140,7 +140,7 @@ fun ZakatScreen(d: AppData, vm: AppViewModel, nav: Nav) {
             }
             Money(maalDue, 32.sp, hidden = hidden)
             val pct = if (nisab > 0) (total.toFloat() / nisab).coerceIn(0f, 1f) else 0f
-            Box(Modifier.padding(top = 10.dp).fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)).background(Color(0xBFFFFFFF))) {
+            Box(Modifier.padding(top = 10.dp).fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)).background(K.veil(0.75f))) {
                 Box(Modifier.fillMaxWidth(pct).fillMaxHeight().clip(RoundedCornerShape(4.dp)).background(K.Green))
             }
             Row(Modifier.padding(top = 7.dp)) {
@@ -159,7 +159,7 @@ fun ZakatScreen(d: AppData, vm: AppViewModel, nav: Nav) {
                 Text("Sedekah bulan ini", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = K.OnPink)
                 Text(if (hidden) "•••" else "Rp" + sedekahMonth.short().replace(" ", ""), fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, color = K.Ink)
                 val sp = if (target > 0) (sedekahMonth.toFloat() / target).coerceIn(0f, 1f) else 0f
-                Box(Modifier.padding(top = 7.dp).fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)).background(Color(0xB3FFFFFF))) {
+                Box(Modifier.padding(top = 7.dp).fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)).background(K.veil(0.70f))) {
                     Box(Modifier.fillMaxWidth(sp).fillMaxHeight().clip(RoundedCornerShape(3.dp)).background(K.Green))
                 }
             }

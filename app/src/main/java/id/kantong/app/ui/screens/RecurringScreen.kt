@@ -243,7 +243,7 @@ private fun RecurringCardR89(d: AppData, b: Bill, onPay: (() -> Unit)?, onClick:
                         .padding(horizontal = 16.dp),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text("Catat Lunas", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    Text("Catat Lunas", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = K.OnGreen)
                 }
             }
         }
@@ -411,7 +411,7 @@ private fun RecurringSheet(d: AppData, vm: AppViewModel, editing: Bill?, onDismi
                                     .pressable { due = n; dayPicker = false },
                                 contentAlignment = Alignment.Center,
                             ) {
-                                Text("$n", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = if (on) Color.White else K.Ink)
+                                Text("$n", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = if (on) K.OnGreen else K.Ink)
                             }
                         }
                     }

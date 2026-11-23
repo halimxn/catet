@@ -85,7 +85,7 @@ fun TimePickerCard(
                 Text("Menit cepat", fontSize = 11.5.sp, fontWeight = FontWeight.ExtraBold, color = K.Ink2, modifier = Modifier.padding(start = 2.dp, top = 12.dp, bottom = 6.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     listOf(0, 15, 30, 45).forEach { m ->
-                        TimeChip(":%02d".format(m), Modifier.weight(1f), if (minute == m) K.Green else K.Tile, if (minute == m) Color.White else K.Ink) { go(hour, m) }
+                        TimeChip(":%02d".format(m), Modifier.weight(1f), if (minute == m) K.Green else K.Tile, if (minute == m) K.OnGreen else K.Ink) { go(hour, m) }
                     }
                 }
             }

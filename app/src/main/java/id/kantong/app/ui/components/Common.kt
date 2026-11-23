@@ -68,7 +68,7 @@ fun Modifier.pressable(onClick: () -> Unit): Modifier {
 
 /** Horizontal progress bar. Drawn at its value right away (no replay on every screen visit); animates only when the value changes. */
 @Composable
-fun ProgressBar(fraction: Float, color: Color, modifier: Modifier = Modifier, track: Color = Color(0x121D2433), height: Dp = 8.dp) {
+fun ProgressBar(fraction: Float, color: Color, modifier: Modifier = Modifier, track: Color = K.c(0x121D2433, 0x1FFFFFFF), height: Dp = 8.dp) {
     @Suppress("NAME_SHADOWING") val height = height.coerceAtMost(8.dp) // thin, calm bars everywhere
     val f by animateFloatAsState(fraction.coerceIn(0f, 1f), tween(450), label = "bar")
     Box(modifier.fillMaxWidth().height(height).clip(RoundedCornerShape(height)).background(track)) {
@@ -89,7 +89,7 @@ fun SectionTitle(title: String, accent: Color = K.Expense, modifier: Modifier = 
         )
         if (onMore != null) {
             Box(Modifier.size(32.dp).clip(RoundedCornerShape(10.dp)).background(K.Ink).pressable(onMore), contentAlignment = Alignment.Center) {
-                Icon(Icons.Rounded.ChevronRight, "Lihat semua", tint = Color.White, modifier = Modifier.size(22.dp))
+                Icon(Icons.Rounded.ChevronRight, "Lihat semua", tint = K.OnGreen, modifier = Modifier.size(22.dp))
             }
         }
     }

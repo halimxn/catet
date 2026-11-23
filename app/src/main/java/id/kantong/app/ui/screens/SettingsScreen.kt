@@ -41,6 +41,7 @@ import androidx.compose.material.icons.rounded.FolderOpen
 import androidx.compose.material.icons.rounded.Key
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.NotificationsActive
+import androidx.compose.material.icons.rounded.DarkMode
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.PhoneAndroid
 import androidx.compose.material.icons.rounded.Schedule
@@ -120,6 +121,7 @@ fun SettingsScreen(d: AppData, vm: AppViewModel, nav: Nav) {
     val scope = rememberCoroutineScope()
     var about by remember { mutableStateOf(false) }
     var style by remember { mutableStateOf(false) }
+    var widgets by remember { mutableStateOf(false) }
     var budget by remember { mutableStateOf(false) }
     var confirmRestore by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf<BackupStatus?>(null) }
@@ -308,19 +310,7 @@ fun SettingsScreen(d: AppData, vm: AppViewModel, nav: Nav) {
                 if (id.kantong.app.data.Prefs.detectOn) "Aktif · dari notifikasi bank & e-wallet" else "Catat dari notifikasi bank & e-wallet",
                 onClick = { nav.go(R.DETECT) },
             )
-            val wctx = androidx.compose.ui.platform.LocalContext.current
-            CListRow("report", "Widget anggaran & catat", "Pasang di layar utama (4×2)", onClick = {
-                val mgr = android.appwidget.AppWidgetManager.getInstance(wctx)
-                if (mgr.isRequestPinAppWidgetSupported) {
-                    mgr.requestPinAppWidget(android.content.ComponentName(wctx, id.kantong.app.widget.BudgetWidgetReceiver::class.java), null, null)
-                }
-            })
-            CListRow("bill", "Widget catat cepat", "Satu baris tombol kategori (4×1)", onClick = {
-                val mgr = android.appwidget.AppWidgetManager.getInstance(wctx)
-                if (mgr.isRequestPinAppWidgetSupported) {
-                    mgr.requestPinAppWidget(android.content.ComponentName(wctx, id.kantong.app.widget.QuickWidgetReceiver::class.java), null, null)
-                }
-            })
+            CListRow("report", "Widget layar utama", "7 widget, ikut mode terang/gelap HP", onClick = { widgets = true })
             CListRow("bookmark", "Bookmark", "${d.starred.size} transaksi", onClick = { nav.go(R.BOOKMARKS) })
             CListRow(
                 "jar", "Target tabungan",
@@ -353,7 +343,25 @@ fun SettingsScreen(d: AppData, vm: AppViewModel, nav: Nav) {
         }
 
         SetGroup("Tampilan") {
-            SetRow(Icons.Rounded.Palette, "Gaya tampilan catatan", "Atur tampilan daftar catatan", divider = false, onClick = { style = true })
+            // theme: light, dark ("senja redup") or follow the phone, plus dark at night
+            Column(Modifier.fillMaxWidth().padding(vertical = 14.dp)) {
+                Text("Tema", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = K.Ink)
+                Text(
+                    when (Prefs.theme) { "dark" -> "Gelap, nyaman untuk malam"; "light" -> "Terang"; else -> "Mengikuti pengaturan HP" },
+                    fontSize = 13.sp, fontWeight = FontWeight.Medium, color = K.Muted,
+                )
+                val modes = listOf("light", "dark", "system")
+                id.kantong.app.ui.components.MeowSegmented(
+                    listOf("Terang", "Gelap", "Sistem"), modes.indexOf(Prefs.theme).coerceAtLeast(0), { Prefs.theme = modes[it] },
+                    Modifier.padding(top = 10.dp).fillMaxWidth(), fill = true, fontSize = 14.sp,
+                )
+            }
+            SetRow(
+                Icons.Rounded.DarkMode, "Gelap otomatis malam", "Pukul 18.00 – 06.00",
+                onClick = { Prefs.autoNight = !Prefs.autoNight },
+                trailing = { MeowToggle(Prefs.autoNight) { Prefs.autoNight = it } },
+            )
+            SetRow(Icons.Rounded.Palette, "Gaya tampilan catatan", "Atur tampilan daftar catatan", onClick = { style = true })
             SetRow(
                 Icons.Rounded.VisibilityOff, "Sembunyikan nominal", "Ganti angka dengan titik-titik",
                 onClick = { Prefs.hideAmounts = !Prefs.hideAmounts },
@@ -452,6 +460,7 @@ fun SettingsScreen(d: AppData, vm: AppViewModel, nav: Nav) {
     }
 
     if (style) RecordStyleSheet(d) { style = false }
+    if (widgets) WidgetSheet { widgets = false }
 
     if (budget) BudgetSheet(d, vm) { budget = false }
 
@@ -629,7 +638,7 @@ private fun SetRow(
             }
             when {
                 trailing != null -> trailing()
-                onClick != null -> Text("›", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color(0xFFA39D90))
+                onClick != null -> Text("›", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = K.c(0xFFA39D90, 0xFF6E6A62))
             }
         }
     }

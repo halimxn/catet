@@ -260,7 +260,7 @@ private fun GoalCardR89(g: Goal, onEdit: () -> Unit, onDeposit: () -> Unit, onWi
                     .padding(horizontal = 16.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                Text("+ Setor", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                Text("+ Setor", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = K.OnGreen)
             }
             if (g.saved > 0) {
                 Spacer(Modifier.width(8.dp))

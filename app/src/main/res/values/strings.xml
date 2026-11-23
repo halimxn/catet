@@ -3,4 +3,9 @@
     <string name="app_name">catet</string>
     <string name="widget_quick_desc">Catat pengeluaran dengan sekali ketuk</string>
     <string name="widget_budget_desc">Sisa anggaran dan tombol catat</string>
+    <string name="widget_month_desc">Sisa uang bulan ini dan tombol catat</string>
+    <string name="widget_daily_desc">Jatah harian dan lima hari terakhir</string>
+    <string name="widget_streak_desc">Hari mencatat beruntun</string>
+    <string name="widget_catat_desc">Tombol catat besar</string>
+    <string name="widget_wait_desc">Tagihan dan deteksi yang menunggu dicatat</string>
 </resources>

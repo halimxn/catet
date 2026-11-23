@@ -228,12 +228,12 @@ fun HomeScreen(d: AppData, vm: AppViewModel, nav: Nav) {
                         Text("Menunggu dicatat", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = soft, modifier = Modifier.weight(1f))
                         if (waiting > 1) Text(
                             "1 dari $waiting", fontSize = 12.5.sp, fontWeight = FontWeight.Bold, color = soft,
-                            modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(Color(0x66FFFFFF)).padding(horizontal = 10.dp, vertical = 3.dp),
+                            modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(K.veil(0.40f)).padding(horizontal = 10.dp, vertical = 3.dp),
                         )
                     }
                     Spacer(Modifier.height(10.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(Modifier.size(44.dp).clip(CircleShape).background(Color(0x80FFFFFF)), contentAlignment = Alignment.Center) {
+                        Box(Modifier.size(44.dp).clip(CircleShape).background(K.veil(0.50f)), contentAlignment = Alignment.Center) {
                             CatIcon(if (x != null) d.category(x.categoryId)?.icon ?: "bill" else b!!.icon.ifBlank { "bill" }, 30.dp)
                         }
                         Spacer(Modifier.width(12.dp))
@@ -256,7 +256,7 @@ fun HomeScreen(d: AppData, vm: AppViewModel, nav: Nav) {
                     Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
                         // secondary action blends into the pink card; the green one is the clear next step
                         Box(
-                            Modifier.weight(1f).height(46.dp).clip(RoundedCornerShape(15.dp)).background(Color(0x73FFFFFF))
+                            Modifier.weight(1f).height(46.dp).clip(RoundedCornerShape(15.dp)).background(K.veil(0.45f))
                                 .pressable { if (x != null) review = true else nav.go(R.RECURRING) },
                             contentAlignment = Alignment.Center,
                         ) { Text(if (x != null) "Tinjau" else "Ubah", fontSize = 15.5.sp, fontWeight = FontWeight.Bold, color = soft) }
@@ -268,9 +268,9 @@ fun HomeScreen(d: AppData, vm: AppViewModel, nav: Nav) {
                                 },
                             horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Icon(Icons.Rounded.Check, null, tint = Color.White, modifier = Modifier.size(18.dp))
+                            Icon(Icons.Rounded.Check, null, tint = K.OnGreen, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(6.dp))
-                            Text("Catat", fontSize = 15.5.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                            Text("Catat", fontSize = 15.5.sp, fontWeight = FontWeight.Bold, color = K.OnGreen)
                         }
                     }
                 }
@@ -363,7 +363,7 @@ private fun RowScope.InOut(icon: androidx.compose.ui.graphics.vector.ImageVector
                 Icon(icon, null, tint = K.Ink, modifier = Modifier.size(12.dp))
             }
             Spacer(Modifier.width(6.dp))
-            Text(label, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF6B6252))
+            Text(label, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = K.c(0xFF6B6252, 0xFFD9C48E))
         }
         Text(if (hidden) "•••••" else "Rp${value.grouped()}", fontSize = 17.sp, fontWeight = FontWeight.ExtraBold, color = color, maxLines = 1, modifier = Modifier.padding(top = 2.dp))
     }
@@ -384,7 +384,7 @@ private fun RowScope.QuickTile(icon: String, label: String, onClick: () -> Unit)
 /** Masuk / Keluar box on the yellow card: soft label, bold amount. */
 @Composable
 private fun InOutBox(label: String, value: String, color: Color, hidden: Boolean, modifier: Modifier) {
-    Column(modifier.clip(RoundedCornerShape(16.dp)).background(Color(0x8CFFFFFF)).padding(horizontal = 12.dp, vertical = 8.dp)) {
+    Column(modifier.clip(RoundedCornerShape(16.dp)).background(K.veil(0.55f)).padding(horizontal = 12.dp, vertical = 8.dp)) {
         Text(label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = K.OnYellow)
         Text(if (hidden) "•••••" else value, fontSize = 15.5.sp, fontWeight = FontWeight.ExtraBold, color = color, maxLines = 1)
     }
@@ -410,7 +410,7 @@ private fun WeekStrip(v: AppData, perDay: Long) {
             val ratio = if (perDay > 0) spent[i].toFloat() / perDay else 0f
             Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
                 Box(
-                    Modifier.fillMaxWidth().height(38.dp).clip(RoundedCornerShape(10.dp)).background(Color(0xA6FFFFFF)).let { m ->
+                    Modifier.fillMaxWidth().height(38.dp).clip(RoundedCornerShape(10.dp)).background(K.veil(0.65f)).let { m ->
                         if (i == todayIdx) m.drawBehind {
                             drawRoundRect(
                                 K.SageMid, cornerRadius = androidx.compose.ui.geometry.CornerRadius(10.dp.toPx()),

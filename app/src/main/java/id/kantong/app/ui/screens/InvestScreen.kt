@@ -85,7 +85,7 @@ import kotlinx.coroutines.withContext
 import java.util.Locale
 import kotlin.math.abs
 
-private val GoldInk = Color(0xFF7A5A12)
+private val GoldInk get() = K.c(0xFF7A5A12, 0xFFF6DFA0)
 private val BondTone = Color(0xFFE8A79C)
 
 private fun pct(v: Double): String = (if (v >= 0) "+" else "−") + String.format(Locale("in", "ID"), "%.1f", abs(v)) + "%"
@@ -525,7 +525,7 @@ fun InvTxnSheet(d: AppData, vm: AppViewModel, h: Holding?, p: Position?, mode: S
                 if (mode == "new") Row(Modifier.padding(top = 12.dp).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     InvKind.all.forEach { (key, label) ->
                         Text(
-                            label, fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, color = if (kind == key) Color.White else K.Ink2,
+                            label, fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, color = if (kind == key) K.OnGreen else K.Ink2,
                             modifier = Modifier.clip(RoundedCornerShape(50)).background(if (kind == key) K.Green else K.Field).pressable { if (kind != key) { kind = key; quote = null; code = ""; name = ""; price = ""; fee = ""; feeEdited = false; coupon = ""; err = null } }.padding(horizontal = 14.dp, vertical = 7.dp),
                         )
                     }
@@ -591,7 +591,7 @@ fun InvTxnSheet(d: AppData, vm: AppViewModel, h: Holding?, p: Position?, mode: S
                                     }
                                 }.padding(horizontal = 16.dp),
                                 contentAlignment = Alignment.Center,
-                            ) { Text(if (checking) "…" else "Cek", fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, color = Color.White) }
+                            ) { Text(if (checking) "…" else "Cek", fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, color = K.OnGreen) }
                         }
                         bondNote?.let { Text(it, fontSize = 12.5.sp, fontWeight = FontWeight.Bold, color = K.ChartIn, modifier = Modifier.padding(start = 4.dp)) }
                         quote?.let { Text("✓ ${it.name} · ${it.price.grouped()}", fontSize = 12.5.sp, fontWeight = FontWeight.Bold, color = K.ChartIn, modifier = Modifier.padding(start = 4.dp)) }
@@ -752,8 +752,8 @@ internal fun ChoiceGrid(options: List<Pair<String, String>>, selected: String, c
                         Modifier.weight(1f).clip(RoundedCornerShape(14.dp)).background(if (on) K.Green else K.Tile).pressable { onPick(key) }.padding(horizontal = 8.dp, vertical = 8.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
-                        Text(label, fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, color = if (on) Color.White else K.Ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        sub?.invoke(key)?.let { Text(it, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = if (on) Color(0xCCFFFFFF) else K.Muted, maxLines = 1) }
+                        Text(label, fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, color = if (on) K.OnGreen else K.Ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        sub?.invoke(key)?.let { Text(it, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = if (on) K.OnGreen.copy(alpha = 0.8f) else K.Muted, maxLines = 1) }
                     }
                 }
                 repeat(cols - row.size) { Spacer(Modifier.weight(1f)) }

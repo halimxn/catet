@@ -267,7 +267,7 @@ internal fun LedgerFormSheet(d: AppData, vm: AppViewModel, editing: Ledger?, onD
                                 .let { m -> if (t == tone) m.border(2.5.dp, K.Ink, CircleShape) else m }
                                 .pressable { tone = t },
                             contentAlignment = Alignment.Center,
-                        ) { if (t == tone) Icon(Icons.Rounded.Check, null, tint = Color.White, modifier = Modifier.size(18.dp)) }
+                        ) { if (t == tone) Icon(Icons.Rounded.Check, null, tint = K.OnGreen, modifier = Modifier.size(18.dp)) }
                     }
                 }
                 Spacer(Modifier.height(24.dp))

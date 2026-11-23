@@ -287,10 +287,10 @@ internal fun SheetHeader(title: String, onClose: () -> Unit, size: Int = 22) {
 internal fun DangerOutlineButton(label: String, modifier: Modifier = Modifier, filled: Boolean = false, onClick: () -> Unit) {
     val shape = RoundedCornerShape(15.dp)
     Box(
-        modifier.height(50.dp).clip(shape).background(if (filled) K.Danger else Color(0xFFFDFBF6))
-            .let { if (filled) it else it.border(1.5.dp, Color(0xFFC9A49E), shape) }.pressable(onClick),
+        modifier.height(50.dp).clip(shape).background(if (filled) K.Danger else K.c(0xFFFDFBF6, 0xFF252A25))
+            .let { if (filled) it else it.border(1.5.dp, K.c(0xFFC9A49E, 0xFF7A4A44), shape) }.pressable(onClick),
         contentAlignment = Alignment.Center,
-    ) { Text(label, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = if (filled) Color.White else K.Danger, maxLines = 1) }
+    ) { Text(label, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = if (filled) K.OnGreen else K.Danger, maxLines = 1) }
 }
 
 /**
@@ -386,9 +386,9 @@ fun RecordDetailCard(
                         Modifier.weight(1f).height(50.dp).clip(RoundedCornerShape(15.dp)).background(K.Green).pressable(onEdit),
                         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center,
                     ) {
-                        Icon(Icons.Rounded.Edit, null, tint = Color.White, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Rounded.Edit, null, tint = K.OnGreen, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(8.dp))
-                        Text("Ubah", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 1)
+                        Text("Ubah", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = K.OnGreen, maxLines = 1)
                     }
                 }
             }
@@ -402,7 +402,7 @@ private fun ToggleChip(label: String, on: Boolean, onBg: Color, leading: @Compos
     val shape = RoundedCornerShape(16.dp)
     Row(
         Modifier.height(32.dp).clip(shape).background(if (on) onBg else K.Tile)
-            .let { if (on) it else it.border(1.4.dp, Color(0xFFE0D7C4), shape) }.pressable(onClick).padding(horizontal = 12.dp),
+            .let { if (on) it else it.border(1.4.dp, K.c(0xFFE0D7C4, 0xFF3A3F3B), shape) }.pressable(onClick).padding(horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         leading()

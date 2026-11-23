@@ -12,12 +12,14 @@ object LaunchAction {
     var category by mutableLongStateOf(0L)
     var budget by mutableStateOf(false)
     var review by mutableStateOf(false)
+    var achieve by mutableStateOf(false)
 
     fun handle(intent: Intent?) {
         when (intent?.getStringExtra("catet_action")) {
             "add" -> { category = intent.getLongExtra("category", 0L); add = true }
             "budget" -> budget = true
             "review" -> review = true
+            "achieve" -> achieve = true
         }
         intent?.removeExtra("catet_action")
     }

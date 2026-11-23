@@ -166,7 +166,7 @@ fun DebtsScreen(d: AppData, vm: AppViewModel, nav: Nav) {
 
 @Composable
 private fun SumTile(label: String, value: Long, color: Color, hidden: Boolean, modifier: Modifier) {
-    Column(modifier.clip(RoundedCornerShape(16.dp)).background(Color(0x99FFFFFF)).padding(horizontal = 12.dp, vertical = 8.dp)) {
+    Column(modifier.clip(RoundedCornerShape(16.dp)).background(K.veil(0.60f)).padding(horizontal = 12.dp, vertical = 8.dp)) {
         Text(label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = K.OnYellow)
         Text(if (hidden) "•••••" else value.grouped(), fontSize = 16.sp, fontWeight = FontWeight.ExtraBold, color = color)
     }
@@ -195,7 +195,7 @@ fun DebtDetailScreen(d: AppData, vm: AppViewModel, nav: Nav, id: Long) {
         Column(Modifier.padding(top = 16.dp).fillMaxWidth().clip(RoundedCornerShape(28.dp)).background(bg).padding(18.dp)) {
             Text(if (s.done) "Sudah lunas" else if (lend(x)) "Sisa yang belum kembali" else "Sisa utang", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = soft)
             Money(if (s.done) x.amount else s.remaining, 32.sp, color = tint(x), hidden = hidden)
-            Box(Modifier.padding(top = 8.dp).fillMaxWidth().height(9.dp).clip(RoundedCornerShape(5.dp)).background(Color(0xB3FFFFFF))) {
+            Box(Modifier.padding(top = 8.dp).fillMaxWidth().height(9.dp).clip(RoundedCornerShape(5.dp)).background(K.veil(0.70f))) {
                 Box(Modifier.fillMaxWidth(s.pct).fillMaxHeight().clip(RoundedCornerShape(5.dp)).background(tint(x)))
             }
             Row(Modifier.padding(top = 6.dp)) {
@@ -224,7 +224,7 @@ fun DebtDetailScreen(d: AppData, vm: AppViewModel, nav: Nav, id: Long) {
                         Box(
                             Modifier.size(24.dp).clip(RoundedCornerShape(8.dp)).background(if (it.paid) K.Green else if (late) K.Pink else K.Field),
                             contentAlignment = Alignment.Center,
-                        ) { Text(if (it.paid) "✓" else if (late) "!" else "", fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, color = if (it.paid) Color.White else K.Danger) }
+                        ) { Text(if (it.paid) "✓" else if (late) "!" else "", fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, color = if (it.paid) K.OnGreen else K.Danger) }
                         Spacer(Modifier.width(10.dp))
                         Column(Modifier.weight(1f)) {
                             Text(fmt(it.due, "d MMM yyyy"), fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, color = K.Ink)
@@ -243,7 +243,7 @@ fun DebtDetailScreen(d: AppData, vm: AppViewModel, nav: Nav, id: Long) {
                 Box(Modifier.fillMaxWidth().height(1.dp).background(K.Line))
             }
             HistRow(
-                if (lend(x)) "Pinjam" else "Utang", K.Yellow, Color(0xFF7A5A12),
+                if (lend(x)) "Pinjam" else "Utang", K.Yellow, K.c(0xFF7A5A12, 0xFFF6DFA0),
                 "${if (lend(x)) "Dipinjamkan" else "Dipinjam"} ${if (hidden) "•••" else x.amount.grouped()}",
                 fmt(x.time, "d MMM yyyy") + accountOf(d, x.txnId) + if (x.note.isNotBlank()) " · ${x.note}" else "",
             ) {}
@@ -348,7 +348,7 @@ private fun DebtAddSheet(d: AppData, vm: AppViewModel, onDismiss: () -> Unit) {
                         Box(
                             Modifier.weight(1f).height(38.dp).clip(RoundedCornerShape(12.dp)).background(if (dir == k) K.Green else Color.Transparent).pressable { dir = k },
                             contentAlignment = Alignment.Center,
-                        ) { Text(l, fontSize = 13.5.sp, fontWeight = FontWeight.ExtraBold, color = if (dir == k) Color.White else K.Muted) }
+                        ) { Text(l, fontSize = 13.5.sp, fontWeight = FontWeight.ExtraBold, color = if (dir == k) K.OnGreen else K.Muted) }
                     }
                 }
                 Column(Modifier.padding(top = 12.dp).fillMaxWidth().clip(RoundedCornerShape(26.dp)).background(K.Yellow).padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -367,7 +367,7 @@ private fun DebtAddSheet(d: AppData, vm: AppViewModel, onDismiss: () -> Unit) {
                 Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     listOf(0, 2, 3, 6, 10, 12).forEach { n ->
                         Text(
-                            if (n == 0) "Tanpa cicilan" else "$n×", fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, color = if (inst == n) Color.White else K.Ink2,
+                            if (n == 0) "Tanpa cicilan" else "$n×", fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, color = if (inst == n) K.OnGreen else K.Ink2,
                             modifier = Modifier.clip(RoundedCornerShape(50)).background(if (inst == n) K.Green else K.Field).pressable { inst = n }.padding(horizontal = 14.dp, vertical = 7.dp),
                         )
                     }
@@ -467,7 +467,7 @@ fun SplitSheet(d: AppData, vm: AppViewModel, t: Txn, onDismiss: () -> Unit) {
                 Row(Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     listOf(true to "Bagi rata", false to "Atur sendiri").forEach { (v, l) ->
                         Text(
-                            l, fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, color = if (even == v) Color.White else K.Ink2,
+                            l, fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, color = if (even == v) K.OnGreen else K.Ink2,
                             modifier = Modifier.clip(RoundedCornerShape(50)).background(if (even == v) K.Green else K.Field).pressable { even = v }.padding(horizontal = 14.dp, vertical = 7.dp),
                         )
                     }

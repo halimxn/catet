@@ -85,7 +85,7 @@ import kotlin.math.abs
 import kotlin.math.roundToLong
 
 private const val DAY = 86_400_000L
-private val FlowTrack = Color(0xFFF3E3B5)
+private val FlowTrack get() = K.c(0xFFF3E3B5, 0xFF5A4C28)
 
 /**
  * Laporan tab: period chip (week / month / year; months follow [ViewPeriod]), Ringkasan / Pengeluaran /

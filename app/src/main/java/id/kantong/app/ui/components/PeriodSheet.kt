@@ -47,7 +47,7 @@ import java.util.Calendar
 import kotlin.math.absoluteValue
 
 private val MONTHS = listOf("Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember")
-private val CARD_TONES = listOf(K.SageCard, K.Pink, K.Card, K.Yellow) // one per quarter
+private val CARD_TONES get() = listOf(K.SageCard, K.Pink, K.Card, K.Yellow) // one per quarter
 
 private fun monthStartOf(year: Int, month: Int): Long = Calendar.getInstance().apply {
     clear(); set(year, month, 1, 0, 0, 0)
@@ -144,7 +144,7 @@ fun PeriodSheet(
                                 }.clip(RoundedCornerShape(13.dp)).pressable { scope.launch { pager.animateScrollToPage(m) } },
                                 contentAlignment = Alignment.Center,
                             ) {
-                                Text(MONTHS[m].take(3), fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, color = if (on) Color.White else if (fut) K.Muted.copy(alpha = 0.7f) else K.Ink2, maxLines = 1)
+                                Text(MONTHS[m].take(3), fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, color = if (on) K.OnGreen else if (fut) K.Muted.copy(alpha = 0.7f) else K.Ink2, maxLines = 1)
                             }
                         }
                     }
@@ -166,7 +166,7 @@ fun PeriodSheet(
 private fun MonthCard(month: Int, year: Int, sum: MonthSum, future: Boolean, label: String?, modifier: Modifier) {
     Column(
         modifier.fillMaxSize().clip(RoundedCornerShape(30.dp)).background(CARD_TONES[month / 3])
-            .border(1.5.dp, Color(0x142F2F2F), RoundedCornerShape(30.dp)).padding(18.dp),
+            .border(1.5.dp, K.c(0x142F2F2F, 0x14FFFFFF), RoundedCornerShape(30.dp)).padding(18.dp),
     ) {
         Row(verticalAlignment = Alignment.Top) {
             Column(Modifier.weight(1f)) {
@@ -179,7 +179,7 @@ private fun MonthCard(month: Int, year: Int, sum: MonthSum, future: Boolean, lab
             if (label != null) {
                 Text(
                     label, fontSize = 11.5.sp, fontWeight = FontWeight.ExtraBold, color = if (future) K.Muted else K.Green,
-                    modifier = Modifier.clip(RoundedCornerShape(50)).background(Color(0xB3FFFFFF)).padding(horizontal = 10.dp, vertical = 3.dp),
+                    modifier = Modifier.clip(RoundedCornerShape(50)).background(K.veil(0.70f)).padding(horizontal = 10.dp, vertical = 3.dp),
                 )
             }
         }
@@ -206,7 +206,7 @@ private fun MonthCard(month: Int, year: Int, sum: MonthSum, future: Boolean, lab
 
 @Composable
 private fun SumBox(label: String, value: String, color: Color, modifier: Modifier) {
-    Column(modifier.clip(RoundedCornerShape(16.dp)).background(Color(0x9EFFFFFF)).padding(horizontal = 10.dp, vertical = 8.dp)) {
+    Column(modifier.clip(RoundedCornerShape(16.dp)).background(K.veil(0.62f)).padding(horizontal = 10.dp, vertical = 8.dp)) {
         Text(label, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = K.Muted)
         Text(value.replace(" ", ""), fontSize = 15.sp, fontWeight = FontWeight.ExtraBold, color = color, maxLines = 1)
     }

@@ -256,6 +256,7 @@ interface KantongDao {
 
     @Query("SELECT * FROM detected ORDER BY time DESC") fun detected(): Flow<List<Detected>>
     @Query("SELECT * FROM detected WHERE id = :id") suspend fun detectedById(id: Long): Detected?
+    @Query("SELECT COUNT(*) FROM detected WHERE status = 0") suspend fun pendingDetectedCount(): Int
     @Query("SELECT COUNT(*) FROM detected WHERE `key` = :key AND time > :since") suspend fun detectedSince(key: String, since: Long): Int
     @Query("SELECT categoryId FROM transactions WHERE kind = :kind AND merchant = :merchant COLLATE NOCASE AND categoryId IS NOT NULL ORDER BY time DESC LIMIT 1")
     suspend fun lastCategoryFor(kind: String, merchant: String): Long?

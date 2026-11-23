@@ -10,6 +10,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -152,6 +153,9 @@ fun KantongApp() {
     androidx.compose.runtime.LaunchedEffect(id.kantong.app.data.LaunchAction.budget) {
         if (id.kantong.app.data.LaunchAction.budget) { tab = R.HOME; while (controller.previousBackStackEntry != null) controller.popBackStack() }
     }
+    androidx.compose.runtime.LaunchedEffect(id.kantong.app.data.LaunchAction.achieve) {
+        if (id.kantong.app.data.LaunchAction.achieve) { id.kantong.app.data.LaunchAction.achieve = false; nav.go(R.ACHIEVE) }
+    }
     androidx.compose.runtime.LaunchedEffect(id.kantong.app.data.LaunchAction.review) {
         if (id.kantong.app.data.LaunchAction.review) { tab = R.HOME; while (controller.previousBackStackEntry != null) controller.popBackStack() }
     }
@@ -256,7 +260,9 @@ private fun BottomBar(tab: String, nav: Nav, modifier: Modifier) {
     Box(modifier.fillMaxWidth().background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(K.Bg.copy(alpha = 0f), K.Bg, K.Bg))).navigationBarsPadding().padding(start = 20.dp, end = 20.dp, top = 14.dp, bottom = 10.dp)) {
         Row(
             Modifier.fillMaxWidth().height(64.dp).shadow(10.dp, RoundedCornerShape(32.dp), ambientColor = Color(0x223A2A14), spotColor = Color(0x223A2A14))
-                .clip(RoundedCornerShape(32.dp)).background(K.Tile).padding(horizontal = 6.dp),
+                // semi-transparent capsule in both themes, with a hairline so it keeps its edge over content
+                .clip(RoundedCornerShape(32.dp)).background(K.c(0xC7FDFCF6, 0x38000000))
+                .border(1.dp, K.c(0x1A2F2F2F, 0x1AFFFFFF), RoundedCornerShape(32.dp)).padding(horizontal = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             NavItem("Beranda", 0, tab == R.HOME) { nav.tab(R.HOME) }
@@ -276,7 +282,7 @@ private fun RowScope.NavItem(label: String, icon: Int, on: Boolean, onClick: () 
             contentAlignment = Alignment.Center,
         ) { NavGlyph(icon, on) }
         Spacer(Modifier.height(1.dp))
-        Text(label, fontSize = 12.sp, fontWeight = if (on) FontWeight.ExtraBold else FontWeight.SemiBold, color = if (on) K.Green else Color(0xFF9C968A), maxLines = 1)
+        Text(label, fontSize = 12.sp, fontWeight = if (on) FontWeight.ExtraBold else FontWeight.SemiBold, color = if (on) K.Green else K.c(0xFF7E776A, 0xFFB3AC9E), maxLines = 1)
     }
 }
 
@@ -284,8 +290,9 @@ private fun RowScope.NavItem(label: String, icon: Int, on: Boolean, onClick: () 
 private fun NavGlyph(icon: Int, on: Boolean) {
     androidx.compose.foundation.Canvas(Modifier.size(23.dp)) {
         val u = size.width / 36f
-        val line = if (on) Color(0xFF2F2F2F) else Color(0xFFA39D90)
-        val st = androidx.compose.ui.graphics.drawscope.Stroke(2.2f * u, cap = androidx.compose.ui.graphics.StrokeCap.Round, join = androidx.compose.ui.graphics.StrokeJoin.Round)
+        // outlines a touch heavier and darker so inactive tabs still read clearly
+        val line = if (on) K.c(0xFF2F2F2F, 0xFFF1ECDF) else K.c(0xFF7E776A, 0xFFB3AC9E)
+        val st = androidx.compose.ui.graphics.drawscope.Stroke(2.7f * u, cap = androidx.compose.ui.graphics.StrokeCap.Round, join = androidx.compose.ui.graphics.StrokeJoin.Round)
         fun p(block: androidx.compose.ui.graphics.Path.() -> Unit) = androidx.compose.ui.graphics.Path().apply(block)
         fun fillStroke(path: androidx.compose.ui.graphics.Path, fill: Color) { if (on) drawPath(path, fill); drawPath(path, line, style = st) }
         when (icon) {

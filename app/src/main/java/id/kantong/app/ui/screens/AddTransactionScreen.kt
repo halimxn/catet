@@ -325,7 +325,7 @@ fun AddTransactionScreen(d: AppData, vm: AppViewModel, nav: Nav, editId: Long) {
                         Modifier.size(40.dp).clip(CircleShape).background(if (flagged) K.Green else K.Tile).anchor(moreAnchor)
                             .pressable { tick(); moreMenu = true },
                         contentAlignment = Alignment.Center,
-                    ) { Icon(Icons.Rounded.MoreHoriz, "Buku kas dan reimburse", tint = if (flagged) Color.White else K.Ink, modifier = Modifier.size(22.dp)) }
+                    ) { Icon(Icons.Rounded.MoreHoriz, "Buku kas dan reimburse", tint = if (flagged) K.OnGreen else K.Ink, modifier = Modifier.size(22.dp)) }
                 }
             }
 
@@ -385,11 +385,11 @@ fun AddTransactionScreen(d: AppData, vm: AppViewModel, nav: Nav, editId: Long) {
             contentAlignment = Alignment.Center,
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Rounded.Check, null, tint = Color.White, modifier = Modifier.size(22.dp))
+                Icon(Icons.Rounded.Check, null, tint = K.OnGreen, modifier = Modifier.size(22.dp))
                 Spacer(Modifier.width(8.dp))
                 Text(
                     if (amount > 0) "Simpan · Rp${amount.grouped()}" else "Simpan",
-                    fontSize = 17.sp, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    fontSize = 17.sp, fontWeight = FontWeight.Bold, color = K.OnGreen, maxLines = 1, overflow = TextOverflow.Ellipsis,
                 )
             }
         }

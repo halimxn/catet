@@ -224,7 +224,7 @@ private fun BudgetBlock(d: AppData, b: Budget, onClick: () -> Unit) {
             Text("$pct%", fontSize = 15.5.sp, fontWeight = FontWeight.ExtraBold, color = if (over) K.Danger else K.Ink, maxLines = 1)
         }
         Spacer(Modifier.height(10.dp))
-        ProgressBar(if (limit > 0) spent.toFloat() / limit else 0f, barColor, track = Color(0xFFEFE6D1), height = 8.dp)
+        ProgressBar(if (limit > 0) spent.toFloat() / limit else 0f, barColor, track = K.c(0xFFEFE6D1, 0xFF313732), height = 8.dp)
     }
 }
 

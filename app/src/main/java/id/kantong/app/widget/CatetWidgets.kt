@@ -49,14 +49,17 @@ import id.kantong.app.data.daysInMonth
 import id.kantong.app.data.dayOfMonth
 import id.kantong.app.data.grouped
 import id.kantong.app.data.short
+import id.kantong.app.data.monthKey
+import id.kantong.app.data.startOfDay
 import id.kantong.app.ui.components.illusBitmap
-import id.kantong.app.ui.theme.K
 
 /** Snapshot the widgets draw from (read straight from the database). */
 private class WData(
     val spentToday: Long, val leftToday: Long, val budgetTotal: Long, val spentMonth: Long, val daysLeft: Int,
     val warnings: List<Pair<String, Int>>, // name, percent used (>100 = over)
     val favorites: List<Category>, val hidden: Boolean, val month: String,
+    val leftMonth: Long, val perDay: Long, val lastDays: List<Pair<String, Long>>, // weekday letter, spent (oldest first, today last)
+    val streak: Int, val recordedToday: Boolean, val recentDays: List<Boolean>, val waiting: Int,
 )
 
 private suspend fun load(ctx: Context): WData {
@@ -76,14 +79,30 @@ private suspend fun load(ctx: Context): WData {
         val lim = v.limitOf(b); val s = v.spentFor(b)
         if (lim <= 0 || s * 100 < lim * 80) null else shortName(b.name) to (s * 100 / lim).toInt()
     }.sortedByDescending { it.second }.take(2)
+    val day = 86_400_000L
+    val today = startOfDay()
+    val letters = listOf("M", "S", "S", "R", "K", "J", "S") // Minggu..Sabtu
+    // start of the day `back` days ago (the +1h keeps it safe around clock changes)
+    fun dayStart(back: Int) = if (back == 0) today else startOfDay(today - back * day + 3_600_000L)
+    val lastDays = (4 downTo 0).map { back ->
+        val start = dayStart(back)
+        val end = if (back == 0) today + day else dayStart(back - 1)
+        val dow = java.util.Calendar.getInstance().apply { timeInMillis = start }.get(java.util.Calendar.DAY_OF_WEEK) - 1
+        letters[dow] to v.txns.filter { it.kind == "out" && it.time >= start && it.time < end }.sumOf { it.amount }
+    }
+    val s = id.kantong.app.ui.screens.streakOf(all)
+    val recent = (4 downTo 0).map { back -> dayStart(back) in s.days }
+    val dueBills = all.bills.count { it.paidMonthKey != monthKey() && it.dueDay <= dayOfMonth() + 3 }
     return WData(
         v.spentToday, (v.safePerDay - v.spentToday).coerceAtLeast(0), v.budgetTotal, v.spentMonth,
         (daysInMonth() - dayOfMonth() + 1).coerceAtLeast(1), warnings, favorites, Prefs.hideAmounts,
         java.text.SimpleDateFormat("MMMM", java.util.Locale("in", "ID")).format(java.util.Date()),
+        v.incomeMonth - v.spentMonth, v.safePerDay, lastDays, s.current, s.today, recent,
+        dao.pendingDetectedCount() + dueBills,
     )
 }
 
-private fun c(color: Color) = ColorProvider(color)
+private fun c(p: ColorProvider) = p
 /** Compact rupiah for widgets: 544rb, 4,4jt (no long decimals). */
 private fun money(v: Long, hidden: Boolean): String {
     if (hidden) return "•••"
@@ -128,7 +147,7 @@ private fun logo(px: Int): Bitmap {
 }
 
 @Composable
-private fun Tile(ctx: Context, label: String, icon: Bitmap, bg: Color, labelColor: Color, intent: Intent, modifier: GlanceModifier) {
+private fun Tile(ctx: Context, label: String, icon: Bitmap, bg: ColorProvider, labelColor: ColorProvider, intent: Intent, modifier: GlanceModifier) {
     Column(modifier.clickable(actionStartActivity(intent)), horizontalAlignment = Alignment.CenterHorizontally) {
         Box(GlanceModifier.fillMaxWidth().height(38.dp).cornerRadius(13.dp).background(bg), contentAlignment = Alignment.Center) {
             Image(ImageProvider(icon), label, GlanceModifier.size(24.dp))
@@ -214,13 +233,226 @@ class BudgetWidget : GlanceAppWidget() {
     }
 }
 
+/** White glyphs, tinted per theme with ColorFilter (plus, catet arc, flame, calendar). */
+private fun glyph(kind: String, px: Int): Bitmap {
+    val b = Bitmap.createBitmap(px, px, Bitmap.Config.ARGB_8888)
+    val cv = Canvas(b); val k = px / 24f
+    val st = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = 2.6f * k; color = 0xFFFFFFFF.toInt(); strokeCap = Paint.Cap.ROUND; strokeJoin = Paint.Join.ROUND }
+    val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFFFFFFF.toInt() }
+    when (kind) {
+        "plus" -> { cv.drawLine(12 * k, 5 * k, 12 * k, 19 * k, st); cv.drawLine(5 * k, 12 * k, 19 * k, 12 * k, st) }
+        "logo" -> { st.strokeWidth = 3.4f * k; cv.drawArc(RectF(4 * k, 4 * k, 20 * k, 20 * k), -40f, -280f, false, st); cv.drawCircle(17.6f * k, 11.6f * k, 2.6f * k, fill) }
+        "calendar" -> {
+            cv.drawRoundRect(RectF(4 * k, 6 * k, 20 * k, 20 * k), 3 * k, 3 * k, st); cv.drawLine(4 * k, 10.5f * k, 20 * k, 10.5f * k, st)
+            cv.drawLine(9 * k, 4 * k, 9 * k, 7 * k, st); cv.drawLine(15 * k, 4 * k, 15 * k, 7 * k, st)
+        }
+        else -> { // flame
+            val path = android.graphics.Path().apply {
+                moveTo(12 * k, 3 * k)
+                cubicTo(13 * k, 7 * k, 18.5f * k, 9.5f * k, 18.5f * k, 14.5f * k)
+                cubicTo(18.5f * k, 18.5f * k, 15.5f * k, 21 * k, 12 * k, 21 * k)
+                cubicTo(8.5f * k, 21 * k, 5.5f * k, 18.5f * k, 5.5f * k, 14.8f * k)
+                cubicTo(5.5f * k, 11.8f * k, 7.5f * k, 10 * k, 8.6f * k, 8.4f * k)
+                cubicTo(9 * k, 10.5f * k, 10 * k, 11.4f * k, 11 * k, 11.6f * k)
+                cubicTo(10.6f * k, 8.5f * k, 11 * k, 5.5f * k, 12 * k, 3 * k)
+                close()
+            }
+            cv.drawPath(path, fill)
+        }
+    }
+    return b
+}
+
+@Composable
+private fun Glyph(kind: String, tint: ColorProvider, size: androidx.compose.ui.unit.Dp) =
+    Image(ImageProvider(glyph(kind, 72)), null, GlanceModifier.size(size), colorFilter = androidx.glance.ColorFilter.tint(tint))
+
+/** Widget header: small rounded square with a glyph, then the label. */
+@Composable
+private fun Head(glyphKind: String, label: String, squareBg: ColorProvider, glyphTint: ColorProvider, labelColor: ColorProvider) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(GlanceModifier.size(18.dp).cornerRadius(6.dp).background(squareBg), contentAlignment = Alignment.Center) { Glyph(glyphKind, glyphTint, 12.dp) }
+        Spacer(GlanceModifier.width(6.dp))
+        Text(label, maxLines = 1, style = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.Bold, color = labelColor))
+    }
+}
+
+/** 2×2 layout shared by every square widget: header, value, one line, then a 32dp bottom zone. */
+@Composable
+private fun Square(
+    bg: ColorProvider, open: Intent, head: @Composable () -> Unit, value: String, valueColor: ColorProvider,
+    line: String, lineColor: ColorProvider, zone: @Composable androidx.glance.layout.RowScope.() -> Unit,
+) {
+    Column(GlanceModifier.fillMaxSize().cornerRadius(24.dp).background(bg).padding(14.dp).clickable(actionStartActivity(open))) {
+        head()
+        Spacer(GlanceModifier.height(10.dp))
+        Text(value, maxLines = 1, style = TextStyle(fontSize = 22.sp, fontWeight = FontWeight.Bold, color = valueColor))
+        Text(line, maxLines = 1, style = TextStyle(fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = lineColor))
+        Spacer(GlanceModifier.defaultWeight())
+        Row(GlanceModifier.fillMaxWidth().height(32.dp), verticalAlignment = Alignment.CenterVertically) { zone() }
+    }
+}
+
+/** One box in a bottom-zone strip of five. */
+@Composable
+private fun androidx.glance.layout.RowScope.DayBox(bg: ColorProvider, content: @Composable () -> Unit = {}) {
+    Box(GlanceModifier.defaultWeight().height(32.dp).padding(horizontal = 2.dp)) {
+        Box(GlanceModifier.fillMaxSize().cornerRadius(10.dp).background(bg), contentAlignment = Alignment.Center) { content() }
+    }
+}
+
+/** 2×2 Sisa bulan ini: money left this month, budget used, Catat. */
+class MonthWidget : GlanceAppWidget() {
+    override suspend fun provideGlance(context: Context, id: GlanceId) {
+        val d = load(context)
+        provideContent {
+            val pct = if (d.budgetTotal > 0) (d.spentMonth * 100 / d.budgetTotal).toInt() else -1
+            Square(
+                K.Yellow, openApp(context, "home"),
+                { Head("logo", "Sisa bulan ini", K.Green, K.OnGreen, K.OnYellow) },
+                (if (d.leftMonth < 0) "−" else "") + "Rp" + money(d.leftMonth, d.hidden), if (d.leftMonth < 0) K.Danger else K.Green,
+                if (pct >= 0) "$pct% anggaran terpakai" else "Keluar Rp" + money(d.spentMonth, d.hidden), K.OnYellow,
+            ) {
+                Row(
+                    GlanceModifier.fillMaxWidth().height(32.dp).cornerRadius(12.dp).background(K.Green).clickable(actionStartActivity(openApp(context, "add"))),
+                    verticalAlignment = Alignment.CenterVertically, horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Glyph("plus", K.OnGreen, 13.dp)
+                    Spacer(GlanceModifier.width(4.dp))
+                    Text("Catat", style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Bold, color = K.OnGreen))
+                }
+            }
+        }
+    }
+}
+
+/** 2×2 Jatah harian: allowance per day and the last five days (green = within, orange = over). */
+class DailyWidget : GlanceAppWidget() {
+    override suspend fun provideGlance(context: Context, id: GlanceId) {
+        val d = load(context)
+        provideContent {
+            val has = d.budgetTotal > 0
+            Square(
+                K.SageCard, openApp(context, if (has) "home" else "budget"),
+                { Head("calendar", "Jatah harian", K.Green, K.OnGreen, K.OnSage) },
+                if (has) "Rp" + money(d.perDay.coerceAtLeast(0), d.hidden) else "Belum ada", K.Ink,
+                if (has) "per hari · ${d.daysLeft} hari lagi" else "Ketuk untuk atur anggaran", K.OnSage,
+            ) {
+                d.lastDays.forEachIndexed { i, (letter, spent) ->
+                    val today = i == d.lastDays.lastIndex
+                    val over = has && spent > d.perDay
+                    val bg = when { today || !has -> K.Tile; over -> K.ChartOut; else -> K.Green }
+                    DayBox(bg) { Text(letter, style = TextStyle(fontSize = 10.sp, fontWeight = FontWeight.Bold, color = if (today || !has) K.OnSage else K.OnGreen)) }
+                }
+            }
+        }
+    }
+}
+
+/** 2×2 Streak: days in a row with a record, and the last five days. */
+class StreakWidget : GlanceAppWidget() {
+    override suspend fun provideGlance(context: Context, id: GlanceId) {
+        val d = load(context)
+        provideContent {
+            Square(
+                K.Card, openApp(context, "achieve"),
+                { Head("flame", "Streak", K.Yellow, K.ChartOut, K.Muted) },
+                "${d.streak} hari", K.Ink,
+                if (d.recordedToday) "Hari ini sudah tercatat" else "Belum catat hari ini", if (d.recordedToday) K.Muted else K.ChartOut,
+            ) {
+                d.recentDays.forEachIndexed { i, done ->
+                    val today = i == d.recentDays.lastIndex
+                    DayBox(if (done) K.Yellow else K.Field) { if (today) Glyph("flame", K.ChartOut, 13.dp) }
+                }
+            }
+        }
+    }
+}
+
+/** 2×1 shared layout: icon circle, title, one line. */
+@Composable
+private fun Half(
+    bg: ColorProvider, open: Intent, well: ColorProvider, icon: @Composable () -> Unit,
+    title: String, titleColor: ColorProvider, line: String, lineColor: ColorProvider,
+) {
+    Row(
+        GlanceModifier.fillMaxSize().cornerRadius(24.dp).background(bg).padding(horizontal = 14.dp).clickable(actionStartActivity(open)),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(GlanceModifier.size(36.dp).cornerRadius(18.dp).background(well), contentAlignment = Alignment.Center) { icon() }
+        Spacer(GlanceModifier.width(10.dp))
+        Column {
+            Text(title, maxLines = 1, style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Bold, color = titleColor))
+            Text(line, maxLines = 1, style = TextStyle(fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = lineColor))
+        }
+    }
+}
+
+/** 2×1 Catat: one big entry button with today's spending. */
+class CatatWidget : GlanceAppWidget() {
+    override suspend fun provideGlance(context: Context, id: GlanceId) {
+        val d = load(context)
+        provideContent {
+            Half(K.Green, openApp(context, "add"), K.GreenWell, { Glyph("plus", K.OnGreen, 19.dp) }, "Catat", K.OnGreen, "Hari ini −" + money(d.spentToday, d.hidden), K.OnGreen)
+        }
+    }
+}
+
+/** 2×1 Menunggu: how many bills and notification detections wait to be recorded. */
+class WaitWidget : GlanceAppWidget() {
+    override suspend fun provideGlance(context: Context, id: GlanceId) {
+        val d = load(context)
+        provideContent {
+            Half(
+                K.Pink, openApp(context, if (d.waiting > 0) "review" else "home"), K.Well,
+                { Text(if (d.waiting > 9) "9+" else "${d.waiting}", style = TextStyle(fontSize = 17.sp, fontWeight = FontWeight.Bold, color = K.OnPink)) },
+                if (d.waiting > 0) "Menunggu" else "Semua beres", K.Ink, if (d.waiting > 0) "dicatat" else "tidak ada tunggakan", K.OnPink,
+            )
+        }
+    }
+}
+
 class QuickWidgetReceiver : GlanceAppWidgetReceiver() { override val glanceAppWidget: GlanceAppWidget = QuickWidget() }
 class BudgetWidgetReceiver : GlanceAppWidgetReceiver() { override val glanceAppWidget: GlanceAppWidget = BudgetWidget() }
+class MonthWidgetReceiver : GlanceAppWidgetReceiver() { override val glanceAppWidget: GlanceAppWidget = MonthWidget() }
+class DailyWidgetReceiver : GlanceAppWidgetReceiver() { override val glanceAppWidget: GlanceAppWidget = DailyWidget() }
+class StreakWidgetReceiver : GlanceAppWidgetReceiver() { override val glanceAppWidget: GlanceAppWidget = StreakWidget() }
+class CatatWidgetReceiver : GlanceAppWidgetReceiver() { override val glanceAppWidget: GlanceAppWidget = CatatWidget() }
+class WaitWidgetReceiver : GlanceAppWidgetReceiver() { override val glanceAppWidget: GlanceAppWidget = WaitWidget() }
 
-/** Redraws both widgets (called after data changes). */
+/** Redraws every widget (called after data changes). Widgets not on the home screen cost nothing. */
 object CatetWidgets {
     suspend fun refresh(ctx: Context) {
         runCatching { QuickWidget().updateAll(ctx) }
         runCatching { BudgetWidget().updateAll(ctx) }
+        runCatching { MonthWidget().updateAll(ctx) }
+        runCatching { DailyWidget().updateAll(ctx) }
+        runCatching { StreakWidget().updateAll(ctx) }
+        runCatching { CatatWidget().updateAll(ctx) }
+        runCatching { WaitWidget().updateAll(ctx) }
     }
+}
+
+/** Widget palette: each colour has a day and a night value, so widgets follow the phone's light/dark mode. */
+private object K {
+    private fun dn(day: Long, night: Long) = androidx.glance.color.ColorProvider(Color(day), Color(night))
+    val Ink = dn(0xFF24302A, 0xFFF1ECDF)
+    val Ink2 = dn(0xFF4D453A, 0xFFD8D0C0)
+    val Muted = dn(0xFF847C6E, 0xFFA39D90)
+    val OnYellow = dn(0xFF7A6B4E, 0xFFF6DFA0)
+    val OnPink = dn(0xFF8C6A64, 0xFFF4C9C0)
+    val OnSage = dn(0xFF5F6B58, 0xFFCFE0BF)
+    val Green = dn(0xFF2E5242, 0xFF9FD3B0)
+    val OnGreen = dn(0xFFFAEAC0, 0xFF15221B)
+    val Danger = dn(0xFF9A3B30, 0xFFF08A7C)
+    val ChartIn = dn(0xFF3F8F63, 0xFF8DDCAA)
+    val ChartOut = dn(0xFFD9853B, 0xFFF6A85E)
+    val Yellow = dn(0xFFFAEAC0, 0xFF4A3F22)
+    val Pink = dn(0xFFF5DCD7, 0xFF4A2E2B)
+    val SageCard = dn(0xFFE4E9D9, 0xFF2F3A2C)
+    val Card = dn(0xFFFDFCF6, 0xFF252A25)
+    val Tile = dn(0xFFFDFCF6, 0x38000000)
+    val Field = dn(0xFFF4EFE3, 0xFF2C312C)
+    val Well = dn(0x99FFFFFF, 0x38000000) // circle behind an icon on a coloured widget
+    val GreenWell = dn(0x2EFAEAC0, 0x1F15221B)
 }

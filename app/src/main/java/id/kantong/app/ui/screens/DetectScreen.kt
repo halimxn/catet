@@ -87,7 +87,7 @@ import id.kantong.app.ui.theme.K
 import id.kantong.app.ui.theme.Tone
 
 /** Pastel badge colours for app initials, picked by position so neighbours differ. */
-private val badgeTones = listOf(K.SageCard to K.OnSage, K.Pink to K.OnPink, K.Yellow to K.OnYellow)
+private val badgeTones get() = listOf(K.SageCard to K.OnSage, K.Pink to K.OnPink, K.Yellow to K.OnYellow)
 
 @Composable
 internal fun AppBadge(app: DetectApp?, label: String, size: Int = 38) {
@@ -294,7 +294,7 @@ fun DetectReviewSheet(d: AppData, vm: AppViewModel, onDismiss: () -> Unit) {
                             }
                             Row(Modifier.padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 SmallButton("Lewati", K.Tile, K.OnYellow, Modifier.weight(1f)) { vm.skipDetected(listOf(x.id)) }
-                                SmallButton("Simpan", K.Green, Color.White, Modifier.weight(1.4f)) { vm.saveDetected(x, catOf(x), accOf(x)) }
+                                SmallButton("Simpan", K.Green, K.OnGreen, Modifier.weight(1.4f)) { vm.saveDetected(x, catOf(x), accOf(x)) }
                             }
                         }
                     }

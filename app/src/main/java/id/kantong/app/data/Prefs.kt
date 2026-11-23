@@ -25,6 +25,8 @@ object Prefs {
     private var _zgold by mutableStateOf("0")
     private var _detectOn by mutableStateOf(false)
     private var _badges by mutableStateOf("")
+    private var _theme by mutableStateOf("system")
+    private var _autoNight by mutableStateOf(false)
     private var _badgesInit by mutableStateOf(false)
     private var _detectOff by mutableStateOf("")
     private var _detectAcc by mutableStateOf("")
@@ -60,6 +62,8 @@ object Prefs {
         _zgold = p.getString("zakat_gold", "0") ?: "0"
         _detectOn = p.getBoolean("detect_on", false)
         _badges = p.getString("badges", "") ?: ""
+        _theme = p.getString("theme", "system") ?: "system"
+        _autoNight = p.getBoolean("auto_night", false)
         _badgesInit = p.getBoolean("badges_init", false)
         _detectOff = p.getString("detect_off", "") ?: ""
         _detectAcc = p.getString("detect_acc", "") ?: ""
@@ -104,6 +108,11 @@ object Prefs {
     /** Zakat: start of the haul year (0 = not set), monthly sedekah target, gold price per gram for the nisab. */
     var haulStart: Long get() = _haul.toLongOrNull() ?: 0L; set(v) { _haul = v.toString(); put("haul", v.toString()) }
     var sedekahTarget: Long get() = _sedekah.toLongOrNull() ?: 0L; set(v) { _sedekah = v.toString(); put("sedekah_target", v.toString()) }
+    /** "light", "dark" or "system". */
+    var theme: String get() = _theme; set(v) { _theme = v; put("theme", v) }
+    /** Dark between 18.00 and 06.00 whatever [theme] says. */
+    var autoNight: Boolean get() = _autoNight; set(v) { _autoNight = v; put("auto_night", v) }
+
     /** When a badge was earned ("key=time;..."), 0 = not yet. */
     fun badgeTime(key: String): Long = _badges.split(';').firstOrNull { it.startsWith("$key=") }?.substringAfter('=')?.toLongOrNull() ?: 0L
     fun earnBadge(key: String, time: Long) {

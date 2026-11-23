@@ -111,14 +111,14 @@ fun SquareButton(icon: ImageVector, label: String, onClick: () -> Unit, modifier
 /** Pill segmented control: neutral track, the selected option sits on a lighter chip. */
 @Composable
 fun MeowSegmented(options: List<String>, selected: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier, fill: Boolean = false, fontSize: androidx.compose.ui.unit.TextUnit = 15.sp) {
-    Row(modifier.clip(RoundedCornerShape(16.dp)).background(Color(0xFFF1EDE2)).padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(modifier.clip(RoundedCornerShape(16.dp)).background(K.c(0xFFF1EDE2, 0xFF2C312C)).padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
         options.forEachIndexed { i, label ->
             val on = i == selected
             Box(
                 (if (fill) Modifier.weight(1f) else Modifier).height(36.dp).clip(RoundedCornerShape(12.dp))
                     .background(if (on) K.Green else Color.Transparent).pressable { onSelect(i) }.padding(horizontal = if (fontSize.value < 15f) 10.dp else 12.dp),
                 contentAlignment = Alignment.Center,
-            ) { Text(label, fontSize = fontSize, fontWeight = FontWeight.SemiBold, color = if (on) Color.White else K.Ink2, maxLines = 1, softWrap = false) }
+            ) { Text(label, fontSize = fontSize, fontWeight = FontWeight.SemiBold, color = if (on) K.OnGreen else K.Ink2, maxLines = 1, softWrap = false) }
         }
     }
 }
@@ -130,7 +130,7 @@ fun HeaderChip(icon: String, label: String, tone: Tone, modifier: Modifier = Mod
         modifier.height(48.dp).clip(RoundedCornerShape(24.dp)).background(K.Sheet).border(1.5.dp, K.Notch, RoundedCornerShape(24.dp)).pressable(onClick).padding(start = 5.dp, end = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.size(36.dp).clip(CircleShape).background(Color(0xFFE6E7E0)), contentAlignment = Alignment.Center) { CatIcon(icon, 26.dp) }
+        Box(Modifier.size(36.dp).clip(CircleShape).background(K.c(0xFFE6E7E0, 0xFF3A3F3B)), contentAlignment = Alignment.Center) { CatIcon(icon, 26.dp) }
         Spacer(Modifier.width(9.dp))
         Column {
             Text(label, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = K.Ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -227,12 +227,12 @@ fun RedButton(label: String, modifier: Modifier = Modifier, enabled: Boolean = t
         modifier.height(50.dp).clip(shape).background(if (enabled) K.Green else K.RedTrack)
             .let { if (enabled) it.pressable(onClick) else it },
         contentAlignment = Alignment.Center,
-    ) { Text(label, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 1) }
+    ) { Text(label, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = K.OnGreen, maxLines = 1) }
 }
 
 @Composable
 fun CreamButton(label: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    Box(modifier.height(50.dp).clip(RoundedCornerShape(16.dp)).background(Color(0xFFFDFBF6)).border(1.5.dp, Color(0xFF3D3D3B), RoundedCornerShape(16.dp)).pressable(onClick), contentAlignment = Alignment.Center) {
+    Box(modifier.height(50.dp).clip(RoundedCornerShape(16.dp)).background(K.c(0xFFFDFBF6, 0xFF252A25)).border(1.5.dp, K.c(0xFF3D3D3B, 0xFF5A605B), RoundedCornerShape(16.dp)).pressable(onClick), contentAlignment = Alignment.Center) {
         Text(label, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = K.Ink, maxLines = 1)
     }
 }
@@ -245,7 +245,7 @@ fun CheckButton(onClick: () -> Unit, modifier: Modifier = Modifier, size: Dp = 5
         modifier.size(size).clip(shape).background(if (enabled) K.Green else K.RedTrack)
             .let { if (enabled) it.pressable(onClick) else it },
         contentAlignment = Alignment.Center,
-    ) { Icon(Icons.Rounded.Check, "Simpan", tint = Color.White, modifier = Modifier.size(size * 0.6f)) }
+    ) { Icon(Icons.Rounded.Check, "Simpan", tint = K.OnGreen, modifier = Modifier.size(size * 0.6f)) }
 }
 
 /** Custom switch: berry thumb on a blush track when on, ink thumb on a sand track when off. */
@@ -255,7 +255,7 @@ fun MeowToggle(checked: Boolean, onChange: (Boolean) -> Unit) {
         Modifier.width(52.dp).height(32.dp).clickable(remember { MutableInteractionSource() }, null) { onChange(!checked) },
         contentAlignment = Alignment.CenterStart,
     ) {
-        Box(Modifier.fillMaxWidth().height(30.dp).clip(RoundedCornerShape(15.dp)).background(if (checked) K.Green else Color(0xFFD9D2C2)))
+        Box(Modifier.fillMaxWidth().height(30.dp).clip(RoundedCornerShape(15.dp)).background(if (checked) K.Green else K.c(0xFFD9D2C2, 0xFF3A3F3B)))
         Box(Modifier.offset(x = if (checked) 25.dp else 3.dp).size(24.dp).clip(CircleShape).background(Color.White))
     }
 }
@@ -312,7 +312,7 @@ fun MeowFab(icon: ImageVector, label: String, onClick: () -> Unit, modifier: Mod
     Box(
         modifier.size(size).shadow(8.dp, CircleShape, spotColor = bg.copy(alpha = .5f)).clip(CircleShape).background(bg).pressable(onClick),
         contentAlignment = Alignment.Center,
-    ) { Icon(icon, label, tint = Color.White, modifier = Modifier.size(size * 0.5f)) }
+    ) { Icon(icon, label, tint = K.OnGreen, modifier = Modifier.size(size * 0.5f)) }
 }
 
 /** Kanto empty state with a heavy title and a friendly line. */
@@ -465,8 +465,8 @@ fun PillOption(label: String, tone: Tone, selected: Boolean, onClick: () -> Unit
         verticalAlignment = Alignment.CenterVertically,
     ) {
         when {
-            icon != null -> Box(Modifier.size(36.dp).clip(CircleShape).background(Color(0xFFE6E7E0)), contentAlignment = Alignment.Center) { CatIcon(icon, 24.dp) }
-            glyph != null -> Box(Modifier.size(36.dp).clip(CircleShape).background(Color(0xFFF1EDE2)), contentAlignment = Alignment.Center) { Icon(glyph, null, tint = K.Green, modifier = Modifier.size(20.dp)) }
+            icon != null -> Box(Modifier.size(36.dp).clip(CircleShape).background(K.c(0xFFE6E7E0, 0xFF3A3F3B)), contentAlignment = Alignment.Center) { CatIcon(icon, 24.dp) }
+            glyph != null -> Box(Modifier.size(36.dp).clip(CircleShape).background(K.c(0xFFF1EDE2, 0xFF2C312C)), contentAlignment = Alignment.Center) { Icon(glyph, null, tint = K.Green, modifier = Modifier.size(20.dp)) }
             else -> Spacer(Modifier.width(6.dp))
         }
         Spacer(Modifier.width(10.dp))
@@ -582,7 +582,7 @@ fun CalendarCard(initial: Long, onDismiss: () -> Unit, withTime: Boolean = true,
                         Modifier.height(34.dp).clip(RoundedCornerShape(17.dp)).background(if (on) K.Green else K.Field)
                             .pressable { picked = onDay(day); shown = day }.padding(horizontal = 14.dp),
                         contentAlignment = Alignment.Center,
-                    ) { Text(label, fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, color = if (on) Color.White else K.Ink2) }
+                    ) { Text(label, fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, color = if (on) K.OnGreen else K.Ink2) }
                 }
             }
 
@@ -639,7 +639,7 @@ fun CalendarCard(initial: Long, onDismiss: () -> Unit, withTime: Boolean = true,
                             ) {
                                 Text(
                                     "$dayNum", fontSize = 13.5.sp, fontWeight = if (inMonth) FontWeight.ExtraBold else FontWeight.Bold,
-                                    color = when { !inMonth || future -> K.Muted.copy(alpha = 0.6f); level >= 3 -> Color.White; else -> K.Ink },
+                                    color = when { !inMonth || future -> K.Muted.copy(alpha = 0.6f); level >= 3 -> K.OnGreen; else -> K.Ink },
                                 )
                             }
                         }
@@ -717,7 +717,7 @@ fun PeriodCard(mode: String, anchor: Long, onDismiss: () -> Unit, onConfirm: (St
                 } else mm.clip(RoundedCornerShape(13.dp)).background(if (on) K.Green else K.Tile)
             }.clip(RoundedCornerShape(13.dp)).pressable(onClick),
             contentAlignment = Alignment.Center,
-        ) { Text(label, fontSize = 13.5.sp, fontWeight = FontWeight.ExtraBold, color = if (on) Color.White else if (dim) K.Muted.copy(alpha = 0.7f) else K.Ink2, maxLines = 1) }
+        ) { Text(label, fontSize = 13.5.sp, fontWeight = FontWeight.ExtraBold, color = if (on) K.OnGreen else if (dim) K.Muted.copy(alpha = 0.7f) else K.Ink2, maxLines = 1) }
     }
 
     Overlay(onDismiss) {

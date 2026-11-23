@@ -57,9 +57,9 @@ import kotlin.math.sqrt
  * Laporan charts (Canvas): thin marks, faint gridlines, text always in ink/muted (never series colors).
  */
 
-private val Grid = Color(0xFFE9E0CC)
-private val FutureLine = Color(0xFFDCD2BE)
-private val FutureText = Color(0xFFB9B09E)
+private val Grid get() = K.c(0xFFE9E0CC, 0xFF313732)
+private val FutureLine get() = K.c(0xFFDCD2BE, 0xFF3A3F3B)
+private val FutureText get() = K.c(0xFFB9B09E, 0xFF6E6A62)
 
 /** One x-axis group of [GroupedBars]: label plus one value per series. */
 class BarGroup(val label: String, val values: List<Long>)
@@ -280,7 +280,7 @@ private fun HeatCell(day: Int, level: Int, future: Boolean, today: Boolean, modi
     ) {
         Text(
             "$day", fontSize = 12.sp, fontWeight = if (future) FontWeight.Bold else FontWeight.ExtraBold,
-            color = when { future -> FutureText; level >= 3 -> Color.White; else -> K.Ink },
+            color = when { future -> FutureText; level >= 3 -> K.OnGreen; else -> K.Ink },
         )
     }
 }

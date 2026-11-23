@@ -324,7 +324,7 @@ private fun FilterRow(label: String, content: @Composable () -> Unit) {
  */
 @Composable
 private fun OptionChip(label: String, selected: Boolean, onClick: () -> Unit, icon: String? = null, outlined: Boolean = false, onClear: (() -> Unit)? = null) {
-    val fg = if (selected) Color.White else K.Ink
+    val fg = if (selected) K.OnGreen else K.Ink
     val shape = RoundedCornerShape(18.dp)
     Row(
         Modifier.height(36.dp).clip(shape).background(if (selected) K.Green else if (outlined) K.Sheet else K.Card)
