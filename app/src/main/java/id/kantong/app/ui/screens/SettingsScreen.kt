@@ -434,7 +434,10 @@ fun SettingsScreen(d: AppData, vm: AppViewModel, nav: Nav) {
             ) {
                 CatetLogo(32.dp)
                 Column(Modifier.weight(1f)) {
-                    Text("catet 1.0", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = K.Ink)
+                    // version straight from the installed package, so it never goes stale
+                    val vctx = androidx.compose.ui.platform.LocalContext.current
+                    val version = remember { runCatching { vctx.packageManager.getPackageInfo(vctx.packageName, 0).versionName }.getOrNull() ?: "" }
+                    Text("catet $version".trim(), fontSize = 16.sp, fontWeight = FontWeight.Bold, color = K.Ink)
                     Text("Gratis, tanpa iklan. Data tersimpan di HP", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = K.Muted)
                 }
             }
