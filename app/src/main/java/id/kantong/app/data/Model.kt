@@ -54,6 +54,8 @@ data class Txn(
     val reimburse: Int = 0, // 0 = no, 1 = waiting to be reimbursed, 2 = reimbursed
     val starred: Boolean = false, // bookmarked
     val fee: Long = 0, // transfer charge
+    val photo: String = "", // receipt file name in private storage ("" = none)
+    val items: String = "", // receipt line items: "name\tqty\tprice" per line
 )
 
 /** A ledger ("buku kas"): a separate book of records, e.g. daily needs, household, a trip. */
@@ -243,7 +245,7 @@ interface KantongDao {
     @Query("DELETE FROM bills") suspend fun clearBills()
 }
 
-@Database(entities = [Account::class, Category::class, Txn::class, Goal::class, Bill::class, Ledger::class, Budget::class, Holding::class, InvTxn::class, Debt::class, DebtPay::class], version = 5, exportSchema = false)
+@Database(entities = [Account::class, Category::class, Txn::class, Goal::class, Bill::class, Ledger::class, Budget::class, Holding::class, InvTxn::class, Debt::class, DebtPay::class], version = 7, exportSchema = false)
 abstract class KantongDb : RoomDatabase() {
     abstract fun dao(): KantongDao
 }
@@ -252,6 +254,20 @@ abstract class KantongDb : RoomDatabase() {
 /** v2 -> v3: budget rollover flags, investments (holdings + their buys/sells/dividends). Keeps every existing row. */
 /** v3 -> v4: debts and their repayments. Keeps every existing row. */
 /** v4 -> v5: yearly coupon for bonds. */
+/** v5 -> v6: receipt photo on records. */
+/** v6 -> v7: receipt line items on records. */
+val MIGRATION_6_7 = object : Migration(6, 7) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE transactions ADD COLUMN items TEXT NOT NULL DEFAULT ''")
+    }
+}
+
+val MIGRATION_5_6 = object : Migration(5, 6) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE transactions ADD COLUMN photo TEXT NOT NULL DEFAULT ''")
+    }
+}
+
 val MIGRATION_4_5 = object : Migration(4, 5) {
     override fun migrate(db: SupportSQLiteDatabase) {
         db.execSQL("ALTER TABLE holdings ADD COLUMN coupon REAL NOT NULL DEFAULT 0")

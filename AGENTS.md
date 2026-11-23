@@ -244,7 +244,7 @@ Baca file ini **sebelum mengubah apa pun**. Semua aturan di sini sudah disetujui
   - Patungan dari `RecordDetailCard` (`onSplit`, `SplitSheet`): catatan pengeluaran jadi bagian sendiri, bagian teman jadi piutang lewat transfer dari akun yang sama sehingga saldo tidak berubah.
 
 **Belum dibuat** (rencana berikutnya, urut prioritas):
-1. **Foto struk** di transaksi, ditampilkan sebagai thumbnail di lembar detail. Setelah itu OCR struk on-device (ML Kit).
+1. **Foto/pindai struk: DITUNDA** (keputusan pemilik). Sempat dibuat lalu dicabut. Kolom `Txn.photo` dan `Txn.items` (DB v6–v7, `MIGRATION_5_6`, `MIGRATION_6_7`) tetap ada tapi tidak dipakai; jangan dihapus karena migrasi tidak bisa dibalik.
 6. **Widget layar utama:** sisa uang dan jatah harian, memakai gaya kartu kuning.
 7. **Ekspor PDF laporan bulanan.**
 8. **Deteksi notifikasi transaksi** on-device (izin notification listener).

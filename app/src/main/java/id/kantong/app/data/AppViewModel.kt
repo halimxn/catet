@@ -19,7 +19,7 @@ import org.json.JSONObject
 object Db {
     @Volatile private var db: KantongDb? = null
     fun get(ctx: Context): KantongDb = db ?: synchronized(this) {
-        db ?: Room.databaseBuilder(ctx.applicationContext, KantongDb::class.java, "kantong.db").addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5).build().also { db = it }
+        db ?: Room.databaseBuilder(ctx.applicationContext, KantongDb::class.java, "kantong.db").addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7).build().also { db = it }
     }
 }
 
@@ -166,6 +166,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun takeAddKind(): String? = pendingAddKind.also { pendingAddKind = null }
 
     init {
+        // Receipt photos were removed as a feature: clear any files left from testing (records keep an unused name).
+        viewModelScope.launch(Dispatchers.IO) { runCatching { java.io.File(app.filesDir, "receipts").deleteRecursively() } }
         viewModelScope.launch(Dispatchers.IO) {
             if (dao.categoryCount() == 0) {
                 dao.insertAccounts(Seed.accounts()); dao.insertCategories(Seed.categories())
@@ -316,7 +318,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val root = JSONObject().put("app", "kantong").put("version", 2).put("exportedAt", System.currentTimeMillis())
         root.put("accounts", JSONArray(dao.allAccounts().map { JSONObject().put("id", it.id).put("name", it.name).put("type", it.type).put("openingBalance", it.openingBalance).put("tone", it.tone).put("icon", it.icon).put("remark", it.remark) }))
         root.put("categories", JSONArray(dao.allCategories().map { JSONObject().put("id", it.id).put("name", it.name).put("icon", it.icon).put("tone", it.tone).put("kind", it.kind).put("budget", it.budget).put("sortOrder", it.sortOrder).put("parentId", it.parentId) }))
-        root.put("transactions", JSONArray(dao.allTransactions().map { JSONObject().put("id", it.id).put("amount", it.amount).put("kind", it.kind).put("categoryId", it.categoryId ?: JSONObject.NULL).put("accountId", it.accountId).put("toAccountId", it.toAccountId ?: JSONObject.NULL).put("merchant", it.merchant).put("note", it.note).put("time", it.time).put("ledgerId", it.ledgerId).put("reimburse", it.reimburse).put("starred", it.starred).put("fee", it.fee) }))
+        root.put("transactions", JSONArray(dao.allTransactions().map { JSONObject().put("id", it.id).put("amount", it.amount).put("kind", it.kind).put("categoryId", it.categoryId ?: JSONObject.NULL).put("accountId", it.accountId).put("toAccountId", it.toAccountId ?: JSONObject.NULL).put("merchant", it.merchant).put("note", it.note).put("time", it.time).put("ledgerId", it.ledgerId).put("reimburse", it.reimburse).put("starred", it.starred).put("fee", it.fee).put("photo", it.photo).put("items", it.items) }))
         root.put("ledgers", JSONArray(dao.allLedgers().map { JSONObject().put("id", it.id).put("name", it.name).put("icon", it.icon).put("tone", it.tone).put("archived", it.archived).put("sortOrder", it.sortOrder) }))
         root.put("budgets", JSONArray(dao.allBudgets().map { JSONObject().put("id", it.id).put("name", it.name).put("period", it.period).put("categoryIds", it.categoryIds).put("amount", it.amount).put("start", it.start).put("end", it.end).put("rollover", it.rollover).put("rolloverOver", it.rolloverOver) }))
         root.put("holdings", JSONArray(dao.allHoldings().map { JSONObject().put("id", it.id).put("kind", it.kind).put("code", it.code).put("name", it.name).put("lastPrice", it.lastPrice).put("prevClose", it.prevClose).put("priceTime", it.priceTime).put("targetPrice", it.targetPrice).put("accountId", it.accountId).put("coupon", it.coupon) }))
@@ -338,7 +340,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         fun arrOrEmpty(k: String): List<JSONObject> = if (root.has(k)) arr(k) else emptyList()
         val accounts = arr("accounts").map { Account(it.getLong("id"), it.getString("name"), it.getString("type"), it.getLong("openingBalance"), it.optString("tone", "SKY"), it.optString("icon"), it.optString("remark")) }
         val cats = arr("categories").map { Category(it.getLong("id"), it.getString("name"), it.getString("icon"), it.getString("tone"), it.getString("kind"), it.getLong("budget"), it.optInt("sortOrder"), it.optLong("parentId")) }
-        val txns = arr("transactions").map { Txn(it.getLong("id"), it.getLong("amount"), it.getString("kind"), it.longOrNull("categoryId"), it.getLong("accountId"), it.longOrNull("toAccountId"), it.optString("merchant"), it.optString("note"), it.getLong("time"), it.optLong("ledgerId", 1), it.optInt("reimburse"), it.optBoolean("starred"), it.optLong("fee")) }
+        val txns = arr("transactions").map { Txn(it.getLong("id"), it.getLong("amount"), it.getString("kind"), it.longOrNull("categoryId"), it.getLong("accountId"), it.longOrNull("toAccountId"), it.optString("merchant"), it.optString("note"), it.getLong("time"), it.optLong("ledgerId", 1), it.optInt("reimburse"), it.optBoolean("starred"), it.optLong("fee"), it.optString("photo"), it.optString("items")) }
         val ledgers = arrOrEmpty("ledgers").map { Ledger(it.getLong("id"), it.getString("name"), it.getString("icon"), it.getString("tone"), it.optBoolean("archived"), it.optInt("sortOrder")) }.ifEmpty { Seed.ledgers() }
         val budgets = arrOrEmpty("budgets").map { Budget(it.getLong("id"), it.getString("name"), it.getString("period"), it.getString("categoryIds"), it.getLong("amount"), it.optLong("start"), it.optLong("end"), it.optInt("rollover"), it.optInt("rolloverOver")) }
             .ifEmpty { cats.filter { it.kind == "out" && it.budget > 0 }.map { Budget(name = it.name, period = "month", categoryIds = it.id.toString(), amount = it.budget) } }
